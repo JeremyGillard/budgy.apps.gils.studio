@@ -1,0 +1,3 @@
+- [ ] Create docker image (include git tag -> docker tag -> embedded in code to display it)
+- [ ] Use azure bicep/terraform to provision infra (sync main with current deployment)
+- [ ] Use github action to test and build automatically and deploy (to azure web app)
