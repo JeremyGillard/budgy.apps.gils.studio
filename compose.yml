@@ -6,10 +6,24 @@ services:
     image: postgres:latest
     environment:
       - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=budgy
     ports:
       - 5432:5432
     volumes:
       - database_data:/var/lib/pgsql/data
+
+  application:
+    image: jeremygillard/budgy
+    build: ./budgy
+    environment:
+      - PHX_HOST=localhost
+      - DATABASE_URL=postgres://postgres:postgres@database:5432/budgy
+      - SECRET_KEY_BASE=O1gtozb5UG1CR6kmF5VVEhYIFTMK5jm862Qy7w1ut9WRK5/tuN4z6P/nTm1zeL+Z
+    ports:
+      - 8080:4000
+    depends_on:
+      - database
 
 volumes:
   
