@@ -4,3 +4,4 @@
 - [ ] Use github action to test and build automatically and deploy (to azure web app)
 - [ ] Create first Ecto migration to reflect financial spreadsheet
 - [ ] Allow user to insert new data
+- [ ] Use chart lib to display trends
