@@ -7,11 +7,63 @@ defmodule BudgyWeb.HomeLive do
   def mount(_params, _session, socket) do
     socket =
       socket
-      |> assign(stats: nil)
-      |> assign(content: [])
-      |> allow_upload(:csv_files, accept: ~w(.csv), max_entries: 10)
+      |> assign(transactions: [])
+      |> assign(missing_transaction_numbers: [])
+      |> allow_upload(:csv_files,
+        accept: ~w(.csv),
+        progress: &handle_progress/3,
+        auto_upload: true,
+        max_entries: 10
+      )
 
     {:ok, socket}
+  end
+
+  def handle_progress(:csv_files, entry, socket) do
+    if entry.done? do
+      uploaded_transactions =
+        consume_uploaded_entry(socket, entry, fn %{path: path} ->
+          IO.inspect(entry, label: "Entry")
+
+          transaction =
+            path
+            |> File.stream!()
+            |> Stream.drop(12)
+            |> Stream.map(&:unicode.characters_to_binary(&1, :latin1, :utf8))
+            |> CSV.decode!(separator: ?;, headers: true)
+            |> Enum.to_list()
+            |> Enum.map(fn original -> Transaction.from_original(original) end)
+            |> Enum.map(fn attrs -> Transaction.to_struct(attrs) end)
+
+          {:ok, transaction}
+        end)
+
+      transactions =
+        socket.assigns.transactions
+        |> Enum.reverse(uploaded_transactions)
+        |> Enum.sort_by(fn transaction -> transaction.number end)
+
+      transactions_with_number =
+        transactions
+        |> Enum.filter(fn transaction -> transaction.number != nil end)
+
+      missing_transaction_numbers =
+        socket.assigns.missing_transaction_numbers
+        |> Enum.reverse(Transaction.missing_transaction_numbers(transactions_with_number))
+        |> Enum.uniq()
+        |> Enum.sort()
+
+      socket =
+        socket
+        |> assign(transactions: transactions)
+        |> assign(missing_transaction_numbers: missing_transaction_numbers)
+
+      IO.inspect(length(missing_transaction_numbers), label: "Missings")
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
   end
 
   @impl true
@@ -21,63 +73,6 @@ defmodule BudgyWeb.HomeLive do
 
   @impl true
   def handle_event("save", _params, socket) do
-    uploaded_files =
-      consume_uploaded_entries(socket, :csv_files, fn %{path: path}, _entry ->
-        content =
-          path
-          |> File.stream!()
-          |> Stream.drop(12)
-          |> Stream.map(&:unicode.characters_to_binary(&1, :latin1, :utf8))
-          |> CSV.decode!(separator: ?;, headers: true)
-          |> Enum.to_list()
-          |> Enum.map(fn original -> Transaction.from_original(original) end)
-          |> Enum.map(fn attrs -> Transaction.to_struct(attrs) end)
-
-        {:ok, content}
-      end)
-
-    content =
-      uploaded_files
-      |> List.flatten()
-      |> Enum.filter(fn
-        %Transaction{posting_date: %Date{year: 2024}} -> true
-        _ -> false
-      end)
-      |> Enum.sort_by(& &1.number)
-
-    transactions =
-      content
-      |> Enum.filter(fn transaction -> transaction.number != nil end)
-
-    n_min =
-      transactions
-      |> Enum.min_by(& &1.number)
-      |> Map.get(:number)
-
-    n_max =
-      transactions
-      |> Enum.max_by(& &1.number)
-      |> Map.get(:number)
-
-    transactions_without_n =
-      content
-      |> Enum.filter(fn transaction -> transaction.number == nil end)
-
-    missings = Transaction.find_missings(transactions)
-
-    stats = %{
-      number_of_transation: length(content),
-      transaction_missings: Transaction.format_human_readable(missings),
-      n_missings: length(transactions_without_n),
-      n_min: n_min,
-      n_max: n_max
-    }
-
-    socket =
-      socket
-      |> assign(stats: stats)
-      |> assign(content: content)
-
     {:noreply, socket}
   end
 
@@ -89,32 +84,21 @@ defmodule BudgyWeb.HomeLive do
 
       <form id="upload-form" phx-submit="save" phx-change="validate" class="mb-4">
         <.live_file_input class="file-input" upload={@uploads.csv_files} />
-        <button type="submit" class="btn">Upload</button>
       </form>
 
-      <div :if={@stats != nil} class="mb-4">
-        <div class="stats shadow">
-          <div class="stat">
-            <div class="stat-title">Number of Transaction</div>
-            <div class="stat-value">{@stats.number_of_transation}</div>
-            <div class="stat-desc">Incompletions: {@stats.transaction_missings}</div>
-          </div>
-          <div class="stat">
-            <div class="stat-title">Including Missings</div>
-            <div class="stat-value">{@stats.n_missings}</div>
-            <div class="stat-desc">min: {@stats.n_min}, max: {@stats.n_max}</div>
-          </div>
+      <div class="flex flex-col gap-2">
+        <div :for={entry <- @uploads.csv_files.entries}>
+          {entry.client_name}
+          <progress class="progress w-16" value={entry.progress} max="100"></progress>
         </div>
       </div>
 
-      <div
-        :if={length(@content) != 0}
-        class="overflow-x-auto h-172 rounded-box border border-base-content/5 bg-base-100"
-      >
+      <div :if={length(@transactions) != 0}>
         <table class="table table-zebra table-xs table-pin-rows table-pin-cols">
           <thead>
             <tr>
               <th>N</th>
+              <th>S</th>
               <th>Name</th>
               <th>Account</th>
               <th>Name (counterpart)</th>
@@ -132,8 +116,9 @@ defmodule BudgyWeb.HomeLive do
             </tr>
           </thead>
           <tbody>
-            <tr :for={transaction <- @content}>
+            <tr :for={transaction <- @transactions}>
               <th>{transaction.number}</th>
+              <th>{transaction.statement}</th>
               <td>{transaction.name}</td>
               <td>{transaction.account}</td>
               <td>{transaction.counterpart_name}</td>
@@ -154,5 +139,35 @@ defmodule BudgyWeb.HomeLive do
       </div>
     </div>
     """
+  end
+
+  defp calculate_stats(transactions) do
+    transactions_without_n =
+      transactions
+      |> Enum.filter(fn transaction -> transaction.number == nil end)
+
+    transactions =
+      transactions
+      |> Enum.filter(fn transaction -> transaction.number != nil end)
+
+    n_min =
+      transactions
+      |> Enum.min_by(& &1.number)
+      |> Map.get(:number)
+
+    n_max =
+      transactions
+      |> Enum.max_by(& &1.number)
+      |> Map.get(:number)
+
+    missings = Transaction.find_missings(transactions)
+
+    %{
+      number_of_transation: length(transactions),
+      transaction_missings: Transaction.format_human_readable(missings),
+      n_missings: length(transactions_without_n),
+      n_min: n_min,
+      n_max: n_max
+    }
   end
 end

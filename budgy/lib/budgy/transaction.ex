@@ -5,6 +5,7 @@ defmodule Budgy.Transaction do
   @primary_key false
   embedded_schema do
     field(:number, :integer)
+    field(:statement, :integer)
     field(:name, :string, default: "Jeremy Gillard")
     field(:account, :string)
     field(:counterpart_name, :string)
@@ -29,6 +30,7 @@ defmodule Budgy.Transaction do
   def from_original(original) do
     %{
       "number" => original["Numéro de transaction"],
+      "statement" => original["Numéro d'extrait"],
       "name" => "Jeremy Gillard",
       "account" => original["Compte"],
       "counterpart_name" => original["Nom contrepartie contient"],
@@ -57,24 +59,10 @@ defmodule Budgy.Transaction do
     Changeset.apply_changes(changeset)
   end
 
-  def find_missings(transactions) do
+  def missing_transaction_numbers(transactions) do
     numbers = Enum.map(transactions, & &1.number)
-    min = hd(numbers)
-    max = List.last(numbers)
-
-    full_range = min..max |> Enum.to_list()
-    missing = full_range -- numbers
-
-    group_missing(missing)
-  end
-
-  def format_human_readable(missings) do
-    missings
-    |> Enum.map(fn
-      [start, stop] -> "#{start}–#{stop}"
-      value -> "#{value}"
-    end)
-    |> Enum.join(", ")
+    range = Enum.min(numbers)..Enum.max(numbers)
+    MapSet.difference(MapSet.new(range), MapSet.new(numbers)) |> MapSet.to_list()
   end
 
   defp normalize_decimal(value) when is_binary(value) do
@@ -92,24 +80,4 @@ defmodule Budgy.Transaction do
         value
     end
   end
-
-  defp group_missing([]), do: []
-
-  defp group_missing([head | tail]), do: group_missing(tail, head, head, [])
-
-  defp group_missing([], start, last, acc) do
-    acc ++ format_group(start, last)
-  end
-
-  defp group_missing([next | rest], start, last, acc) when next == last + 1 do
-    group_missing(rest, start, next, acc)
-  end
-
-  defp group_missing([next | rest], start, last, acc) do
-    acc = acc ++ format_group(start, last)
-    group_missing(rest, next, next, acc)
-  end
-
-  defp format_group(start, last) when last - start >= 2, do: [[start, last]]
-  defp format_group(start, last), do: Enum.to_list(start..last)
 end
