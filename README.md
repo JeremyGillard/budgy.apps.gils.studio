@@ -1,3 +1,4 @@
+- [ ] Work on auto upload feature
 - [ ] Use changelog and bump tool
 - [ ] Create docker image (include git tag -> docker tag -> embedded in code to display it)
 - [ ] Use azure bicep/terraform to provision infra (sync main with current deployment)
