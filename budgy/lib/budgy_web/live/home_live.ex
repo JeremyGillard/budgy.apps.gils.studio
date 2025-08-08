@@ -35,7 +35,14 @@ defmodule BudgyWeb.HomeLive do
         {:ok, content}
       end)
 
-    {:noreply, assign(socket, content: uploaded_files |> List.flatten())}
+    content =
+      uploaded_files
+      |> List.flatten()
+      |> Enum.sort_by(& &1.number)
+
+    IO.inspect(content, label: "Content")
+
+    {:noreply, assign(socket, content: content)}
   end
 
   def handle_event("show", _params, socket) do
@@ -62,8 +69,16 @@ defmodule BudgyWeb.HomeLive do
               <th>Account</th>
               <th>Name (counterpart)</th>
               <th>Account (counterpart)</th>
-              <th>Date of recognition</th>
+              <th>Street</th>
+              <th>Postal Code</th>
+              <th>BIC</th>
+              <th>Country Code</th>
               <th>Amount</th>
+              <th>Currency</th>
+              <th>Date of recognition</th>
+              <th>Value Date</th>
+              <th>Description</th>
+              <th>Communication</th>
             </tr>
           </thead>
           <tbody>
@@ -73,8 +88,16 @@ defmodule BudgyWeb.HomeLive do
               <td>{transaction.account}</td>
               <td>{transaction.counterpart_name}</td>
               <td>{transaction.counterpart_account}</td>
-              <td>{transaction.posting_date}</td>
+              <td>{transaction.counterpart_street}</td>
+              <td>{transaction.counterpart_postal_code}</td>
+              <td>{transaction.counterpart_bic}</td>
+              <td>{transaction.counterpart_country_code}</td>
               <td>{transaction.amount}</td>
+              <td>{transaction.currency}</td>
+              <td>{transaction.posting_date}</td>
+              <td>{transaction.value_date}</td>
+              <td>{transaction.description}</td>
+              <td>{transaction.communication}</td>
             </tr>
           </tbody>
         </table>

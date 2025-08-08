@@ -50,7 +50,9 @@ defmodule Budgy.Transaction do
     attrs =
       attrs
       |> Map.update!("amount", &normalize_decimal/1)
-      |> Map.update!("birth_date", &normalize_date/1)
+      |> Map.update!("value_date", &normalize_date/1)
+      |> Map.update!("posting_date", &normalize_date/1)
+
     changeset = changeset(%__MODULE__{}, attrs)
     Changeset.apply_changes(changeset)
   end
@@ -64,8 +66,10 @@ defmodule Budgy.Transaction do
     case String.split(value, "/") do
       [day, month, year] ->
         "#{year}-#{month}-#{day}"
+
       _ ->
-        value  # fallback if format is unexpected
+        # fallback if format is unexpected
+        value
     end
   end
 end
