@@ -57,6 +57,26 @@ defmodule Budgy.Transaction do
     Changeset.apply_changes(changeset)
   end
 
+  def find_missings(transactions) do
+    numbers = Enum.map(transactions, & &1.number)
+    min = hd(numbers)
+    max = List.last(numbers)
+
+    full_range = min..max |> Enum.to_list()
+    missing = full_range -- numbers
+
+    group_missing(missing)
+  end
+
+  def format_human_readable(missings) do
+    missings
+    |> Enum.map(fn
+      [start, stop] -> "#{start}–#{stop}"
+      value -> "#{value}"
+    end)
+    |> Enum.join(", ")
+  end
+
   defp normalize_decimal(value) when is_binary(value) do
     value
     |> String.replace(",", ".")
@@ -72,4 +92,24 @@ defmodule Budgy.Transaction do
         value
     end
   end
+
+  defp group_missing([]), do: []
+
+  defp group_missing([head | tail]), do: group_missing(tail, head, head, [])
+
+  defp group_missing([], start, last, acc) do
+    acc ++ format_group(start, last)
+  end
+
+  defp group_missing([next | rest], start, last, acc) when next == last + 1 do
+    group_missing(rest, start, next, acc)
+  end
+
+  defp group_missing([next | rest], start, last, acc) do
+    acc = acc ++ format_group(start, last)
+    group_missing(rest, next, next, acc)
+  end
+
+  defp format_group(start, last) when last - start >= 2, do: [[start, last]]
+  defp format_group(start, last), do: Enum.to_list(start..last)
 end

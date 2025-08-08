@@ -7,8 +7,9 @@ defmodule BudgyWeb.HomeLive do
   def mount(_params, _session, socket) do
     socket =
       socket
+      |> assign(stats: nil)
       |> assign(content: [])
-      |> allow_upload(:csv_files, accept: ~w(.csv), max_entries: 5)
+      |> allow_upload(:csv_files, accept: ~w(.csv), max_entries: 10)
 
     {:ok, socket}
   end
@@ -38,30 +39,74 @@ defmodule BudgyWeb.HomeLive do
     content =
       uploaded_files
       |> List.flatten()
+      |> Enum.filter(fn
+        %Transaction{posting_date: %Date{year: 2024}} -> true
+        _ -> false
+      end)
       |> Enum.sort_by(& &1.number)
 
-    IO.inspect(content, label: "Content")
+    transactions =
+      content
+      |> Enum.filter(fn transaction -> transaction.number != nil end)
 
-    {:noreply, assign(socket, content: content)}
-  end
+    n_min =
+      transactions
+      |> Enum.min_by(& &1.number)
+      |> Map.get(:number)
 
-  def handle_event("show", _params, socket) do
-    IO.inspect(length(socket.assigns.content))
-    IO.inspect(socket.assigns.content |> List.first())
+    n_max =
+      transactions
+      |> Enum.max_by(& &1.number)
+      |> Map.get(:number)
+
+    transactions_without_n =
+      content
+      |> Enum.filter(fn transaction -> transaction.number == nil end)
+
+    missings = Transaction.find_missings(transactions)
+
+    stats = %{
+      number_of_transation: length(content),
+      transaction_missings: Transaction.format_human_readable(missings),
+      n_missings: length(transactions_without_n),
+      n_min: n_min,
+      n_max: n_max
+    }
+
+    socket =
+      socket
+      |> assign(stats: stats)
+      |> assign(content: content)
+
     {:noreply, socket}
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <div phx-drop-target={@uploads.csv_files.ref}>
-      <form id="upload-form" phx-submit="save" phx-change="validate">
+    <div class="p-4" phx-drop-target={@uploads.csv_files.ref}>
+      <form id="upload-form" phx-submit="save" phx-change="validate" class="mb-4">
         <.live_file_input class="file-input" upload={@uploads.csv_files} />
         <button type="submit" class="btn">Upload</button>
       </form>
-      <button class="btn" phx-click="show">Show</button>
-      <div :if={length(@content) != 0} class="overflow-x-auto">
-        <table class="table table-xs">
+
+      <div :if={@stats != nil} class="mb-4">
+        <div class="stats shadow">
+          <div class="stat">
+            <div class="stat-title">Number of Transaction</div>
+            <div class="stat-value">{@stats.number_of_transation}</div>
+            <div class="stat-desc">Incompletions: {@stats.transaction_missings}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">Including Missings</div>
+            <div class="stat-value">{@stats.n_missings}</div>
+            <div class="stat-desc">min: {@stats.n_min}, max: {@stats.n_max}</div>
+          </div>
+        </div>
+      </div>
+
+      <div :if={length(@content) != 0} class="overflow-x-auto h-172 rounded-box border border-base-content/5 bg-base-100">
+        <table class="table table-zebra table-xs table-pin-rows table-pin-cols">
           <thead>
             <tr>
               <th>N</th>
