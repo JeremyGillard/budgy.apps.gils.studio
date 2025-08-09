@@ -176,4 +176,72 @@ defmodule Budgy.BankingTest do
       assert %Ecto.Changeset{} = Banking.change_counterparty(counterparty)
     end
   end
+
+  describe "transactions" do
+    alias Budgy.Banking.Transaction
+
+    import Budgy.BankingFixtures
+
+    @invalid_attrs %{description: nil, number: nil, currency: nil, statement_number: nil, value_date: nil, posting_date: nil, amount: nil, communication: nil}
+
+    test "list_transactions/0 returns all transactions" do
+      transaction = transaction_fixture()
+      assert Banking.list_transactions() == [transaction]
+    end
+
+    test "get_transaction!/1 returns the transaction with given id" do
+      transaction = transaction_fixture()
+      assert Banking.get_transaction!(transaction.id) == transaction
+    end
+
+    test "create_transaction/1 with valid data creates a transaction" do
+      valid_attrs = %{description: "some description", number: 42, currency: "some currency", statement_number: 42, value_date: ~U[2025-08-08 19:31:00Z], posting_date: ~U[2025-08-08 19:31:00Z], amount: "120.5", communication: "some communication"}
+
+      assert {:ok, %Transaction{} = transaction} = Banking.create_transaction(valid_attrs)
+      assert transaction.description == "some description"
+      assert transaction.number == 42
+      assert transaction.currency == "some currency"
+      assert transaction.statement_number == 42
+      assert transaction.value_date == ~U[2025-08-08 19:31:00Z]
+      assert transaction.posting_date == ~U[2025-08-08 19:31:00Z]
+      assert transaction.amount == Decimal.new("120.5")
+      assert transaction.communication == "some communication"
+    end
+
+    test "create_transaction/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Banking.create_transaction(@invalid_attrs)
+    end
+
+    test "update_transaction/2 with valid data updates the transaction" do
+      transaction = transaction_fixture()
+      update_attrs = %{description: "some updated description", number: 43, currency: "some updated currency", statement_number: 43, value_date: ~U[2025-08-09 19:31:00Z], posting_date: ~U[2025-08-09 19:31:00Z], amount: "456.7", communication: "some updated communication"}
+
+      assert {:ok, %Transaction{} = transaction} = Banking.update_transaction(transaction, update_attrs)
+      assert transaction.description == "some updated description"
+      assert transaction.number == 43
+      assert transaction.currency == "some updated currency"
+      assert transaction.statement_number == 43
+      assert transaction.value_date == ~U[2025-08-09 19:31:00Z]
+      assert transaction.posting_date == ~U[2025-08-09 19:31:00Z]
+      assert transaction.amount == Decimal.new("456.7")
+      assert transaction.communication == "some updated communication"
+    end
+
+    test "update_transaction/2 with invalid data returns error changeset" do
+      transaction = transaction_fixture()
+      assert {:error, %Ecto.Changeset{}} = Banking.update_transaction(transaction, @invalid_attrs)
+      assert transaction == Banking.get_transaction!(transaction.id)
+    end
+
+    test "delete_transaction/1 deletes the transaction" do
+      transaction = transaction_fixture()
+      assert {:ok, %Transaction{}} = Banking.delete_transaction(transaction)
+      assert_raise Ecto.NoResultsError, fn -> Banking.get_transaction!(transaction.id) end
+    end
+
+    test "change_transaction/1 returns a transaction changeset" do
+      transaction = transaction_fixture()
+      assert %Ecto.Changeset{} = Banking.change_transaction(transaction)
+    end
+  end
 end

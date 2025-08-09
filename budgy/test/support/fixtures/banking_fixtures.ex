@@ -51,4 +51,25 @@ defmodule Budgy.BankingFixtures do
 
     counterparty
   end
+
+  @doc """
+  Generate a transaction.
+  """
+  def transaction_fixture(attrs \\ %{}) do
+    {:ok, transaction} =
+      attrs
+      |> Enum.into(%{
+        amount: "120.5",
+        communication: "some communication",
+        currency: "some currency",
+        description: "some description",
+        number: 42,
+        posting_date: ~U[2025-08-08 19:31:00Z],
+        statement_number: 42,
+        value_date: ~U[2025-08-08 19:31:00Z]
+      })
+      |> Budgy.Banking.create_transaction()
+
+    transaction
+  end
 end

@@ -33,6 +33,11 @@ defmodule BudgyWeb.Router do
     live "/counterparties/new", CounterpartyLive.Form, :new
     live "/counterparties/:id", CounterpartyLive.Show, :show
     live "/counterparties/:id/edit", CounterpartyLive.Form, :edit
+
+    live "/transactions", TransactionLive.Index, :index
+    live "/transactions/new", TransactionLive.Form, :new
+    live "/transactions/:id", TransactionLive.Show, :show
+    live "/transactions/:id/edit", TransactionLive.Form, :edit
   end
 
   # Other scopes may use custom stacks.
