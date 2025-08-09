@@ -20,4 +20,20 @@ defmodule Budgy.BankingFixtures do
 
     address
   end
+
+  @doc """
+  Generate a bank.
+  """
+  def bank_fixture(attrs \\ %{}) do
+    {:ok, bank} =
+      attrs
+      |> Enum.into(%{
+        bic: "some bic",
+        country_code: "some country_code",
+        name: "some name"
+      })
+      |> Budgy.Banking.create_bank()
+
+    bank
+  end
 end

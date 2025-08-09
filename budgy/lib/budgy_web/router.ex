@@ -23,6 +23,11 @@ defmodule BudgyWeb.Router do
     live "/addresses/new", AddressLive.Form, :new
     live "/addresses/:id", AddressLive.Show, :show
     live "/addresses/:id/edit", AddressLive.Form, :edit
+
+    live "/banks", BankLive.Index, :index
+    live "/banks/new", BankLive.Form, :new
+    live "/banks/:id", BankLive.Show, :show
+    live "/banks/:id/edit", BankLive.Form, :edit
   end
 
   # Other scopes may use custom stacks.

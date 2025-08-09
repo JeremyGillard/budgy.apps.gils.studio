@@ -62,4 +62,62 @@ defmodule Budgy.BankingTest do
       assert %Ecto.Changeset{} = Banking.change_address(address)
     end
   end
+
+  describe "banks" do
+    alias Budgy.Banking.Bank
+
+    import Budgy.BankingFixtures
+
+    @invalid_attrs %{name: nil, bic: nil, country_code: nil}
+
+    test "list_banks/0 returns all banks" do
+      bank = bank_fixture()
+      assert Banking.list_banks() == [bank]
+    end
+
+    test "get_bank!/1 returns the bank with given id" do
+      bank = bank_fixture()
+      assert Banking.get_bank!(bank.id) == bank
+    end
+
+    test "create_bank/1 with valid data creates a bank" do
+      valid_attrs = %{name: "some name", bic: "some bic", country_code: "some country_code"}
+
+      assert {:ok, %Bank{} = bank} = Banking.create_bank(valid_attrs)
+      assert bank.name == "some name"
+      assert bank.bic == "some bic"
+      assert bank.country_code == "some country_code"
+    end
+
+    test "create_bank/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Banking.create_bank(@invalid_attrs)
+    end
+
+    test "update_bank/2 with valid data updates the bank" do
+      bank = bank_fixture()
+      update_attrs = %{name: "some updated name", bic: "some updated bic", country_code: "some updated country_code"}
+
+      assert {:ok, %Bank{} = bank} = Banking.update_bank(bank, update_attrs)
+      assert bank.name == "some updated name"
+      assert bank.bic == "some updated bic"
+      assert bank.country_code == "some updated country_code"
+    end
+
+    test "update_bank/2 with invalid data returns error changeset" do
+      bank = bank_fixture()
+      assert {:error, %Ecto.Changeset{}} = Banking.update_bank(bank, @invalid_attrs)
+      assert bank == Banking.get_bank!(bank.id)
+    end
+
+    test "delete_bank/1 deletes the bank" do
+      bank = bank_fixture()
+      assert {:ok, %Bank{}} = Banking.delete_bank(bank)
+      assert_raise Ecto.NoResultsError, fn -> Banking.get_bank!(bank.id) end
+    end
+
+    test "change_bank/1 returns a bank changeset" do
+      bank = bank_fixture()
+      assert %Ecto.Changeset{} = Banking.change_bank(bank)
+    end
+  end
 end
