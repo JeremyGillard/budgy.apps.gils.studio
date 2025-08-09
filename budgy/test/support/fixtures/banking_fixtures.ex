@@ -36,4 +36,19 @@ defmodule Budgy.BankingFixtures do
 
     bank
   end
+
+  @doc """
+  Generate a counterparty.
+  """
+  def counterparty_fixture(attrs \\ %{}) do
+    {:ok, counterparty} =
+      attrs
+      |> Enum.into(%{
+        account: "some account",
+        name: "some name"
+      })
+      |> Budgy.Banking.create_counterparty()
+
+    counterparty
+  end
 end

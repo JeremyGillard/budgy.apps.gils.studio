@@ -197,4 +197,100 @@ defmodule Budgy.Banking do
   def change_bank(%Bank{} = bank, attrs \\ %{}) do
     Bank.changeset(bank, attrs)
   end
+
+  alias Budgy.Banking.Counterparty
+
+  @doc """
+  Returns the list of counterparties.
+
+  ## Examples
+
+      iex> list_counterparties()
+      [%Counterparty{}, ...]
+
+  """
+  def list_counterparties do
+    Repo.all(Counterparty)
+  end
+
+  @doc """
+  Gets a single counterparty.
+
+  Raises `Ecto.NoResultsError` if the Counterparty does not exist.
+
+  ## Examples
+
+      iex> get_counterparty!(123)
+      %Counterparty{}
+
+      iex> get_counterparty!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_counterparty!(id), do: Repo.get!(Counterparty, id)
+
+  @doc """
+  Creates a counterparty.
+
+  ## Examples
+
+      iex> create_counterparty(%{field: value})
+      {:ok, %Counterparty{}}
+
+      iex> create_counterparty(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_counterparty(attrs) do
+    %Counterparty{}
+    |> Counterparty.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a counterparty.
+
+  ## Examples
+
+      iex> update_counterparty(counterparty, %{field: new_value})
+      {:ok, %Counterparty{}}
+
+      iex> update_counterparty(counterparty, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_counterparty(%Counterparty{} = counterparty, attrs) do
+    counterparty
+    |> Counterparty.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a counterparty.
+
+  ## Examples
+
+      iex> delete_counterparty(counterparty)
+      {:ok, %Counterparty{}}
+
+      iex> delete_counterparty(counterparty)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_counterparty(%Counterparty{} = counterparty) do
+    Repo.delete(counterparty)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking counterparty changes.
+
+  ## Examples
+
+      iex> change_counterparty(counterparty)
+      %Ecto.Changeset{data: %Counterparty{}}
+
+  """
+  def change_counterparty(%Counterparty{} = counterparty, attrs \\ %{}) do
+    Counterparty.changeset(counterparty, attrs)
+  end
 end

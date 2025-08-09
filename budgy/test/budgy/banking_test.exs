@@ -120,4 +120,60 @@ defmodule Budgy.BankingTest do
       assert %Ecto.Changeset{} = Banking.change_bank(bank)
     end
   end
+
+  describe "counterparties" do
+    alias Budgy.Banking.Counterparty
+
+    import Budgy.BankingFixtures
+
+    @invalid_attrs %{name: nil, account: nil}
+
+    test "list_counterparties/0 returns all counterparties" do
+      counterparty = counterparty_fixture()
+      assert Banking.list_counterparties() == [counterparty]
+    end
+
+    test "get_counterparty!/1 returns the counterparty with given id" do
+      counterparty = counterparty_fixture()
+      assert Banking.get_counterparty!(counterparty.id) == counterparty
+    end
+
+    test "create_counterparty/1 with valid data creates a counterparty" do
+      valid_attrs = %{name: "some name", account: "some account"}
+
+      assert {:ok, %Counterparty{} = counterparty} = Banking.create_counterparty(valid_attrs)
+      assert counterparty.name == "some name"
+      assert counterparty.account == "some account"
+    end
+
+    test "create_counterparty/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Banking.create_counterparty(@invalid_attrs)
+    end
+
+    test "update_counterparty/2 with valid data updates the counterparty" do
+      counterparty = counterparty_fixture()
+      update_attrs = %{name: "some updated name", account: "some updated account"}
+
+      assert {:ok, %Counterparty{} = counterparty} = Banking.update_counterparty(counterparty, update_attrs)
+      assert counterparty.name == "some updated name"
+      assert counterparty.account == "some updated account"
+    end
+
+    test "update_counterparty/2 with invalid data returns error changeset" do
+      counterparty = counterparty_fixture()
+      assert {:error, %Ecto.Changeset{}} = Banking.update_counterparty(counterparty, @invalid_attrs)
+      assert counterparty == Banking.get_counterparty!(counterparty.id)
+    end
+
+    test "delete_counterparty/1 deletes the counterparty" do
+      counterparty = counterparty_fixture()
+      assert {:ok, %Counterparty{}} = Banking.delete_counterparty(counterparty)
+      assert_raise Ecto.NoResultsError, fn -> Banking.get_counterparty!(counterparty.id) end
+    end
+
+    test "change_counterparty/1 returns a counterparty changeset" do
+      counterparty = counterparty_fixture()
+      assert %Ecto.Changeset{} = Banking.change_counterparty(counterparty)
+    end
+  end
 end
