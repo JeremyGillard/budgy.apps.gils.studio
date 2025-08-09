@@ -18,6 +18,11 @@ defmodule BudgyWeb.Router do
     pipe_through :browser
 
     live "/", HomeLive
+
+    live "/addresses", AddressLive.Index, :index
+    live "/addresses/new", AddressLive.Form, :new
+    live "/addresses/:id", AddressLive.Show, :show
+    live "/addresses/:id/edit", AddressLive.Form, :edit
   end
 
   # Other scopes may use custom stacks.
