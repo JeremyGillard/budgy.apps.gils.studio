@@ -6,7 +6,8 @@ defmodule Budgy.Banking.Counterparty do
   @foreign_key_type :binary_id
   schema "counterparties" do
     field :name, :string
-    field :address_id, :binary_id
+    has_many :account, Budgy.Banking.Account
+    belongs_to :address, Budgy.Banking.Address
 
     timestamps(type: :utc_datetime)
   end
@@ -14,7 +15,7 @@ defmodule Budgy.Banking.Counterparty do
   @doc false
   def changeset(counterparty, attrs) do
     counterparty
-    |> cast(attrs, [:name])
+    |> cast(attrs, [:name, :address_id])
     |> validate_required([:name])
   end
 end

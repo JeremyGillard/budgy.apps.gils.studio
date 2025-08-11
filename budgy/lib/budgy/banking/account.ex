@@ -6,7 +6,8 @@ defmodule Budgy.Banking.Account do
   @foreign_key_type :binary_id
   schema "accounts" do
     field :number, :string
-    field :bank_id, :binary_id
+    belongs_to :counterparty, Budgy.Banking.Counterparty
+    belongs_to :bank, Budgy.Banking.Bank
 
     timestamps(type: :utc_datetime)
   end
@@ -14,7 +15,7 @@ defmodule Budgy.Banking.Account do
   @doc false
   def changeset(account, attrs) do
     account
-    |> cast(attrs, [:number])
-    |> validate_required([:number])
+    |> cast(attrs, [:number, :counterparty_id, :bank_id])
+    |> validate_required([:number, :counterparty_id])
   end
 end

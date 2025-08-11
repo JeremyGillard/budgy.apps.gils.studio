@@ -8,6 +8,7 @@ defmodule Budgy.Banking.Bank do
     field :name, :string
     field :bic, :string
     field :country_code, :string
+    has_many :accounts, Budgy.Banking.Account
 
     timestamps(type: :utc_datetime)
   end
@@ -16,6 +17,6 @@ defmodule Budgy.Banking.Bank do
   def changeset(bank, attrs) do
     bank
     |> cast(attrs, [:name, :bic, :country_code])
-    |> validate_required([:name, :bic, :country_code])
+    |> validate_required([:bic])
   end
 end

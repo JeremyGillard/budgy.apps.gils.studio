@@ -9,6 +9,7 @@ defmodule Budgy.Banking.Address do
     field :number, :string
     field :postal_code, :string
     field :city, :string
+    has_many :counterparties, Budgy.Banking.Counterparty
 
     timestamps(type: :utc_datetime)
   end

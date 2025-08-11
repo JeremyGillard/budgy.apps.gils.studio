@@ -13,8 +13,8 @@ defmodule Budgy.Banking.Transaction do
     field :currency, :string
     field :description, :string
     field :communication, :string
-    field :sender_id, :binary_id
-    field :recipient_id, :binary_id
+    belongs_to :sender, Budgy.Banking.Counterparty
+    belongs_to :recipient, Budgy.Banking.Counterparty
 
     timestamps(type: :utc_datetime)
   end
@@ -22,7 +22,7 @@ defmodule Budgy.Banking.Transaction do
   @doc false
   def changeset(transaction, attrs) do
     transaction
-    |> cast(attrs, [:number, :statement_number, :value_date, :posting_date, :amount, :currency, :description, :communication])
-    |> validate_required([:number, :statement_number, :value_date, :posting_date, :amount, :currency, :description, :communication])
+    |> cast(attrs, [:number, :statement_number, :value_date, :posting_date, :amount, :currency, :description, :communication, :sender_id, :recipient_id])
+    |> validate_required([:number, :statement_number, :value_date, :posting_date, :amount, :currency, :description, :sender_id, :recipient_id])
   end
 end
