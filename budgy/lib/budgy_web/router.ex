@@ -18,26 +18,6 @@ defmodule BudgyWeb.Router do
     pipe_through :browser
 
     live "/", HomeLive
-
-    live "/addresses", AddressLive.Index, :index
-    live "/addresses/new", AddressLive.Form, :new
-    live "/addresses/:id", AddressLive.Show, :show
-    live "/addresses/:id/edit", AddressLive.Form, :edit
-
-    live "/banks", BankLive.Index, :index
-    live "/banks/new", BankLive.Form, :new
-    live "/banks/:id", BankLive.Show, :show
-    live "/banks/:id/edit", BankLive.Form, :edit
-
-    live "/counterparties", CounterpartyLive.Index, :index
-    live "/counterparties/new", CounterpartyLive.Form, :new
-    live "/counterparties/:id", CounterpartyLive.Show, :show
-    live "/counterparties/:id/edit", CounterpartyLive.Form, :edit
-
-    live "/transactions", TransactionLive.Index, :index
-    live "/transactions/new", TransactionLive.Form, :new
-    live "/transactions/:id", TransactionLive.Show, :show
-    live "/transactions/:id/edit", TransactionLive.Form, :edit
   end
 
   # Other scopes may use custom stacks.
