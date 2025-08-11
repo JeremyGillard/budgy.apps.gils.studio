@@ -85,6 +85,8 @@ defmodule BudgyWeb.HomeLive do
   def render(assigns) do
     ~H"""
     <div class="p-4" phx-drop-target={@uploads.csv_files.ref}>
+      <h1>Budgy v{Application.spec(:budgy, :vsn)}</h1>
+
       <form id="upload-form" phx-submit="save" phx-change="validate" class="mb-4">
         <.live_file_input class="file-input" upload={@uploads.csv_files} />
         <button type="submit" class="btn">Upload</button>
@@ -105,7 +107,10 @@ defmodule BudgyWeb.HomeLive do
         </div>
       </div>
 
-      <div :if={length(@content) != 0} class="overflow-x-auto h-172 rounded-box border border-base-content/5 bg-base-100">
+      <div
+        :if={length(@content) != 0}
+        class="overflow-x-auto h-172 rounded-box border border-base-content/5 bg-base-100"
+      >
         <table class="table table-zebra table-xs table-pin-rows table-pin-cols">
           <thead>
             <tr>
