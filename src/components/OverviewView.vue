@@ -135,7 +135,7 @@ h2 {
 }
 
 .month-cell.empty {
-  background: var(--p-surface-200);
+  background: var(--p-surface-600);
   color: var(--p-text-muted-color);
 }
 
