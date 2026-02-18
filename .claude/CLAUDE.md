@@ -40,6 +40,9 @@ Frontend is vanilla JS (`src/main.js`) — no framework. Uses `window.__TAURI__.
 
 ## Key conventions
 
+### Commit messages
+Follow the [Conventional Commits](https://www.conventionalcommits.org/) convention (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, etc.).
+
 ### TDD workflow
 Write a failing test first, then implement. Tests live inline in each file under `#[cfg(test)] mod tests`.
 
