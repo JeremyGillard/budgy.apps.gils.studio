@@ -141,6 +141,9 @@ async function loadDailySummary() {
     netCents.value =
       income.reduce((s, v) => s + v, 0) + expenses.reduce((s, v) => s + v, 0);
 
+    chartOptions.value.scales.y.suggestedMin = Math.min(netCents.value, 0);
+    chartOptions.value.scales.y.suggestedMax = Math.max(netCents.value, 0);
+
     chartData.value = {
       labels,
       datasets: [
