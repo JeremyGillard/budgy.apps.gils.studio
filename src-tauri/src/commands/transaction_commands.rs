@@ -4,7 +4,7 @@ use crate::commands::import_commands::DbConn;
 use crate::error::BudgyError;
 use crate::models::transaction::Transaction;
 use crate::services::transaction_service;
-use crate::services::transaction_service::CategorizationStats;
+use crate::services::transaction_service::{CategorizationStats, CategorySuggestion};
 
 #[tauri::command]
 pub fn list_transactions_by_month(
@@ -51,4 +51,14 @@ pub fn get_categorization_stats(
 ) -> Result<CategorizationStats, BudgyError> {
     let mut conn = db.0.lock().map_err(|e| BudgyError::General(e.to_string()))?;
     transaction_service::categorization_stats(&mut conn)
+}
+
+#[tauri::command]
+pub fn get_category_suggestions(
+    db: State<DbConn>,
+    year: i32,
+    month: u32,
+) -> Result<Vec<CategorySuggestion>, BudgyError> {
+    let mut conn = db.0.lock().map_err(|e| BudgyError::General(e.to_string()))?;
+    transaction_service::suggest_categories(&mut conn, year, month)
 }

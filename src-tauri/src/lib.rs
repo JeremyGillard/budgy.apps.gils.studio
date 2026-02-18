@@ -38,6 +38,7 @@ pub fn run() {
             commands::transaction_commands::categorize_transaction,
             commands::transaction_commands::bulk_categorize_transactions,
             commands::transaction_commands::get_categorization_stats,
+            commands::transaction_commands::get_category_suggestions,
             commands::account_commands::list_accounts,
             commands::category_commands::list_categories,
             commands::stats_commands::monthly_summary,

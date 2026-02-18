@@ -1,9 +1,18 @@
 use diesel::prelude::*;
+use diesel::sql_types::{Integer, Text};
 use serde::Serialize;
 
 use crate::db::schema::transactions;
 use crate::error::BudgyError;
 use crate::models::transaction::{NewTransaction, Transaction};
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct CategorySuggestion {
+    #[diesel(sql_type = Integer)]
+    pub transaction_id: i32,
+    #[diesel(sql_type = Integer)]
+    pub suggested_category_id: i32,
+}
 
 #[derive(Serialize)]
 pub struct CategorizationStats {
@@ -99,6 +108,59 @@ pub fn bulk_categorize(
     Ok(updated)
 }
 
+pub fn suggest_categories(
+    conn: &mut SqliteConnection,
+    year: i32,
+    month: u32,
+) -> Result<Vec<CategorySuggestion>, BudgyError> {
+    let start = format!("{:04}-{:02}-01", year, month);
+    let end = format!("{:04}-{:02}-31", year, month);
+
+    let results = diesel::sql_query(
+        "WITH uncategorized AS ( \
+           SELECT id, counterparty_id, description \
+           FROM transactions \
+           WHERE category_id IS NULL \
+             AND accounting_date >= ?1 AND accounting_date <= ?2 \
+         ), \
+         cp_suggestions AS ( \
+           SELECT u.id AS transaction_id, t.category_id AS suggested_category_id, COUNT(*) AS freq \
+           FROM uncategorized u \
+           JOIN transactions t ON t.counterparty_id = u.counterparty_id \
+           WHERE t.category_id IS NOT NULL AND u.counterparty_id IS NOT NULL \
+           GROUP BY u.id, t.category_id \
+         ), \
+         best_cp AS ( \
+           SELECT transaction_id, suggested_category_id \
+           FROM cp_suggestions cs \
+           WHERE freq = (SELECT MAX(freq) FROM cp_suggestions WHERE transaction_id = cs.transaction_id) \
+           GROUP BY transaction_id \
+         ), \
+         desc_suggestions AS ( \
+           SELECT u.id AS transaction_id, t.category_id AS suggested_category_id, COUNT(*) AS freq \
+           FROM uncategorized u \
+           LEFT JOIN best_cp bc ON bc.transaction_id = u.id \
+           JOIN transactions t ON t.description = u.description AND t.category_id IS NOT NULL AND t.id != u.id \
+           WHERE bc.transaction_id IS NULL \
+           GROUP BY u.id, t.category_id \
+         ), \
+         best_desc AS ( \
+           SELECT transaction_id, suggested_category_id \
+           FROM desc_suggestions ds \
+           WHERE freq = (SELECT MAX(freq) FROM desc_suggestions WHERE transaction_id = ds.transaction_id) \
+           GROUP BY transaction_id \
+         ) \
+         SELECT transaction_id, suggested_category_id FROM best_cp \
+         UNION ALL \
+         SELECT transaction_id, suggested_category_id FROM best_desc",
+    )
+    .bind::<Text, _>(&start)
+    .bind::<Text, _>(&end)
+    .load::<CategorySuggestion>(conn)?;
+
+    Ok(results)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,6 +168,7 @@ mod tests {
     use crate::db::schema::{accounts, categories, transaction_types};
     use crate::models::account::NewAccount;
     use crate::models::category::Category;
+    use crate::services::counterparty_service;
 
     fn setup(conn: &mut SqliteConnection) -> (i32, i32) {
         let acct = NewAccount {
@@ -320,5 +383,356 @@ mod tests {
 
         let tx: Transaction = transactions::table.first(conn).unwrap();
         assert_eq!(tx.category_id, Some(food.id));
+    }
+
+    #[test]
+    fn test_suggest_by_counterparty() {
+        let conn = &mut establish_test_connection();
+        let (account_id, type_id) = setup(conn);
+
+        let cp = counterparty_service::find_or_create(
+            conn, Some("BE00 1234 5678 9012"), "Colruyt", None, None, None, None,
+        ).unwrap();
+
+        let food: Category = categories::table
+            .filter(categories::name.eq("Food & Groceries"))
+            .first(conn)
+            .unwrap();
+
+        // Categorized tx with same counterparty (different month)
+        let old = NewTransaction {
+            account_id,
+            counterparty_id: Some(cp.id),
+            category_id: Some(food.id),
+            transaction_type_id: type_id,
+            accounting_date: "2024-11-15",
+            value_date: "2024-11-15",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -3000,
+            currency: "EUR",
+            description: "COLRUYT",
+            communication: None,
+            import_hash: "sug_cp_old",
+        };
+        insert(conn, &old).unwrap();
+
+        // Uncategorized tx with same counterparty in target month
+        let new = NewTransaction {
+            account_id,
+            counterparty_id: Some(cp.id),
+            category_id: None,
+            transaction_type_id: type_id,
+            accounting_date: "2024-12-10",
+            value_date: "2024-12-10",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -4500,
+            currency: "EUR",
+            description: "COLRUYT",
+            communication: None,
+            import_hash: "sug_cp_new",
+        };
+        insert(conn, &new).unwrap();
+
+        let suggestions = suggest_categories(conn, 2024, 12).unwrap();
+        assert_eq!(suggestions.len(), 1);
+
+        let uncat_tx: Transaction = transactions::table
+            .filter(transactions::import_hash.eq("sug_cp_new"))
+            .first(conn)
+            .unwrap();
+        assert_eq!(suggestions[0].transaction_id, uncat_tx.id);
+        assert_eq!(suggestions[0].suggested_category_id, food.id);
+    }
+
+    #[test]
+    fn test_suggest_by_description_fallback() {
+        let conn = &mut establish_test_connection();
+        let (account_id, type_id) = setup(conn);
+
+        let transport: Category = categories::table
+            .filter(categories::name.eq("Transport"))
+            .first(conn)
+            .unwrap();
+
+        // Categorized tx with same description, no counterparty
+        let old = NewTransaction {
+            account_id,
+            counterparty_id: None,
+            category_id: Some(transport.id),
+            transaction_type_id: type_id,
+            accounting_date: "2024-11-05",
+            value_date: "2024-11-05",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -2500,
+            currency: "EUR",
+            description: "NMBS TICKET",
+            communication: None,
+            import_hash: "sug_desc_old",
+        };
+        insert(conn, &old).unwrap();
+
+        // Uncategorized tx with same description
+        let new = NewTransaction {
+            account_id,
+            counterparty_id: None,
+            category_id: None,
+            transaction_type_id: type_id,
+            accounting_date: "2024-12-20",
+            value_date: "2024-12-20",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -2500,
+            currency: "EUR",
+            description: "NMBS TICKET",
+            communication: None,
+            import_hash: "sug_desc_new",
+        };
+        insert(conn, &new).unwrap();
+
+        let suggestions = suggest_categories(conn, 2024, 12).unwrap();
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].suggested_category_id, transport.id);
+    }
+
+    #[test]
+    fn test_counterparty_takes_priority() {
+        let conn = &mut establish_test_connection();
+        let (account_id, type_id) = setup(conn);
+
+        let cp = counterparty_service::find_or_create(
+            conn, Some("BE99 0000 1111 2222"), "Merchant", None, None, None, None,
+        ).unwrap();
+
+        let food: Category = categories::table
+            .filter(categories::name.eq("Food & Groceries"))
+            .first(conn)
+            .unwrap();
+        let transport: Category = categories::table
+            .filter(categories::name.eq("Transport"))
+            .first(conn)
+            .unwrap();
+
+        // Counterparty-based: categorized as Food
+        let old_cp = NewTransaction {
+            account_id,
+            counterparty_id: Some(cp.id),
+            category_id: Some(food.id),
+            transaction_type_id: type_id,
+            accounting_date: "2024-11-01",
+            value_date: "2024-11-01",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -1000,
+            currency: "EUR",
+            description: "SHARED DESC",
+            communication: None,
+            import_hash: "prio_cp",
+        };
+        insert(conn, &old_cp).unwrap();
+
+        // Description-based: categorized as Transport (different counterparty)
+        let old_desc = NewTransaction {
+            account_id,
+            counterparty_id: None,
+            category_id: Some(transport.id),
+            transaction_type_id: type_id,
+            accounting_date: "2024-11-02",
+            value_date: "2024-11-02",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -1000,
+            currency: "EUR",
+            description: "SHARED DESC",
+            communication: None,
+            import_hash: "prio_desc",
+        };
+        insert(conn, &old_desc).unwrap();
+
+        // Uncategorized tx with both counterparty and matching description
+        let new = NewTransaction {
+            account_id,
+            counterparty_id: Some(cp.id),
+            category_id: None,
+            transaction_type_id: type_id,
+            accounting_date: "2024-12-15",
+            value_date: "2024-12-15",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -1000,
+            currency: "EUR",
+            description: "SHARED DESC",
+            communication: None,
+            import_hash: "prio_new",
+        };
+        insert(conn, &new).unwrap();
+
+        let suggestions = suggest_categories(conn, 2024, 12).unwrap();
+        assert_eq!(suggestions.len(), 1);
+        // Counterparty match (Food) takes priority over description match (Transport)
+        assert_eq!(suggestions[0].suggested_category_id, food.id);
+    }
+
+    #[test]
+    fn test_most_frequent_wins() {
+        let conn = &mut establish_test_connection();
+        let (account_id, type_id) = setup(conn);
+
+        let cp = counterparty_service::find_or_create(
+            conn, Some("BE77 5555 6666 7777"), "FreqMerchant", None, None, None, None,
+        ).unwrap();
+
+        let food: Category = categories::table
+            .filter(categories::name.eq("Food & Groceries"))
+            .first(conn)
+            .unwrap();
+        let transport: Category = categories::table
+            .filter(categories::name.eq("Transport"))
+            .first(conn)
+            .unwrap();
+
+        // 3 txs categorized as Food for this counterparty
+        for i in 0..3 {
+            let tx = NewTransaction {
+                account_id,
+                counterparty_id: Some(cp.id),
+                category_id: Some(food.id),
+                transaction_type_id: type_id,
+                accounting_date: "2024-10-01",
+                value_date: "2024-10-01",
+                statement_number: None,
+                transaction_number: None,
+                amount_cents: -1000,
+                currency: "EUR",
+                description: "FREQ",
+                communication: None,
+                import_hash: &format!("freq_food_{}", i),
+            };
+            insert(conn, &tx).unwrap();
+        }
+
+        // 1 tx categorized as Transport for same counterparty
+        let tx = NewTransaction {
+            account_id,
+            counterparty_id: Some(cp.id),
+            category_id: Some(transport.id),
+            transaction_type_id: type_id,
+            accounting_date: "2024-10-05",
+            value_date: "2024-10-05",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -1000,
+            currency: "EUR",
+            description: "FREQ",
+            communication: None,
+            import_hash: "freq_transport_0",
+        };
+        insert(conn, &tx).unwrap();
+
+        // Uncategorized tx with same counterparty
+        let new = NewTransaction {
+            account_id,
+            counterparty_id: Some(cp.id),
+            category_id: None,
+            transaction_type_id: type_id,
+            accounting_date: "2024-12-01",
+            value_date: "2024-12-01",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -1000,
+            currency: "EUR",
+            description: "FREQ",
+            communication: None,
+            import_hash: "freq_new",
+        };
+        insert(conn, &new).unwrap();
+
+        let suggestions = suggest_categories(conn, 2024, 12).unwrap();
+        assert_eq!(suggestions.len(), 1);
+        // Food (3 occurrences) wins over Transport (1 occurrence)
+        assert_eq!(suggestions[0].suggested_category_id, food.id);
+    }
+
+    #[test]
+    fn test_no_match_returns_empty() {
+        let conn = &mut establish_test_connection();
+        let (account_id, type_id) = setup(conn);
+
+        // Uncategorized tx with unique description and no counterparty
+        let new = NewTransaction {
+            account_id,
+            counterparty_id: None,
+            category_id: None,
+            transaction_type_id: type_id,
+            accounting_date: "2024-12-25",
+            value_date: "2024-12-25",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -9999,
+            currency: "EUR",
+            description: "TOTALLY UNIQUE DESCRIPTION",
+            communication: None,
+            import_hash: "no_match",
+        };
+        insert(conn, &new).unwrap();
+
+        let suggestions = suggest_categories(conn, 2024, 12).unwrap();
+        assert!(suggestions.is_empty());
+    }
+
+    #[test]
+    fn test_ignores_already_categorized() {
+        let conn = &mut establish_test_connection();
+        let (account_id, type_id) = setup(conn);
+
+        let cp = counterparty_service::find_or_create(
+            conn, Some("BE11 2222 3333 4444"), "CatMerchant", None, None, None, None,
+        ).unwrap();
+
+        let food: Category = categories::table
+            .filter(categories::name.eq("Food & Groceries"))
+            .first(conn)
+            .unwrap();
+
+        // Previously categorized tx
+        let old = NewTransaction {
+            account_id,
+            counterparty_id: Some(cp.id),
+            category_id: Some(food.id),
+            transaction_type_id: type_id,
+            accounting_date: "2024-11-10",
+            value_date: "2024-11-10",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -2000,
+            currency: "EUR",
+            description: "CAT MERCHANT",
+            communication: None,
+            import_hash: "ignore_old",
+        };
+        insert(conn, &old).unwrap();
+
+        // Already categorized tx in target month — should NOT appear in suggestions
+        let already_cat = NewTransaction {
+            account_id,
+            counterparty_id: Some(cp.id),
+            category_id: Some(food.id),
+            transaction_type_id: type_id,
+            accounting_date: "2024-12-10",
+            value_date: "2024-12-10",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -2000,
+            currency: "EUR",
+            description: "CAT MERCHANT",
+            communication: None,
+            import_hash: "ignore_already",
+        };
+        insert(conn, &already_cat).unwrap();
+
+        let suggestions = suggest_categories(conn, 2024, 12).unwrap();
+        assert!(suggestions.is_empty());
     }
 }
