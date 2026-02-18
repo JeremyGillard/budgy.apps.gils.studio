@@ -39,6 +39,7 @@ const selectedRows = ref([]);
 const bulkCategoryId = ref(null);
 const loading = ref(false);
 const globalStats = ref(null);
+const suggestions = ref({});
 
 const categoryMap = computed(() => {
   const map = {};
@@ -89,14 +90,20 @@ function rowClass(data) {
 async function loadData() {
   loading.value = true;
   try {
-    const [txs, cats, stats] = await Promise.all([
+    const [txs, cats, stats, sugs] = await Promise.all([
       invoke("list_transactions_by_month", { year: props.year, month: props.month }),
       invoke("list_categories"),
       invoke("get_categorization_stats"),
+      invoke("get_category_suggestions", { year: props.year, month: props.month }),
     ]);
     transactions.value = txs;
     categories.value = cats;
     globalStats.value = stats;
+    const map = {};
+    for (const s of sugs) {
+      map[s.transaction_id] = s.suggested_category_id;
+    }
+    suggestions.value = map;
   } catch (e) {
     console.error("Failed to load data:", e);
   } finally {
@@ -117,6 +124,13 @@ async function onCategoryChange(transaction, categoryId) {
     }
   } catch (e) {
     toast.add({ severity: "error", summary: "Failed to categorize", detail: String(e), life: 5000 });
+  }
+}
+
+async function confirmSuggestion(transaction) {
+  const categoryId = suggestions.value[transaction.id];
+  if (categoryId != null) {
+    await onCategoryChange(transaction, categoryId);
   }
 }
 
@@ -268,15 +282,26 @@ watch(
       <Column field="counterparty_name" header="Counterparty" style="width: 15%" />
       <Column header="Category" style="width: 20%">
         <template #body="{ data }">
-          <Select
-            :modelValue="data.category_id"
-            @update:modelValue="onCategoryChange(data, $event)"
-            :options="categoryOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Select category"
-            class="category-select"
-          />
+          <div class="category-cell">
+            <Button
+              v-if="data.category_id == null && suggestions[data.id] != null"
+              icon="pi pi-check"
+              outlined size="small" severity="success"
+              aria-label="Accept suggestion"
+              class="confirm-btn"
+              @click="confirmSuggestion(data)"
+            />
+            <Select
+              :modelValue="data.category_id ?? suggestions[data.id] ?? null"
+              @update:modelValue="onCategoryChange(data, $event)"
+              :options="categoryOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select category"
+              class="category-select"
+              :class="{ 'suggestion-active': data.category_id == null && suggestions[data.id] != null }"
+            />
+          </div>
         </template>
       </Column>
       <Column field="amount_cents" header="Amount" style="width: 12%">
@@ -375,8 +400,27 @@ watch(
   min-width: 180px;
 }
 
-.category-select {
-  width: 100%;
+.category-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.category-cell .category-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.confirm-btn {
+  flex-shrink: 0;
+  background: var(--p-content-background) !important;
+  border: 1px solid var(--p-content-border-color) !important;
+  color: var(--p-green-500) !important;
+}
+
+.suggestion-active :deep(.p-select-label) {
+  font-style: italic;
+  opacity: 0.7;
 }
 
 .description-cell {
