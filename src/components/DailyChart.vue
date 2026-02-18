@@ -11,6 +11,33 @@ const props = defineProps({
 
 const chartData = ref(null);
 const txByDate = ref(new Map());
+const netCents = ref(0);
+
+const netLinePlugin = {
+  id: "netLine",
+  afterDatasetsDraw(chart) {
+    const yScale = chart.scales.y;
+    const yPixel = yScale.getPixelForValue(netCents.value);
+    const { left, right } = chart.chartArea;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = getComputedStyle(document.documentElement)
+      .getPropertyValue("--p-blue-500")
+      .trim();
+    ctx.lineWidth = 1.5;
+    ctx.moveTo(left, yPixel);
+    ctx.lineTo(right, yPixel);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+const chartPlugins = ref([netLinePlugin]);
+
+const axisColor = getComputedStyle(document.documentElement)
+  .getPropertyValue("--p-text-muted-color")
+  .trim();
 
 const chartOptions = ref({
   responsive: true,
@@ -54,9 +81,19 @@ const chartOptions = ref({
     },
   },
   scales: {
-    x: { stacked: false },
+    x: {
+      stacked: false,
+      border: { display: false },
+      ticks: { color: axisColor },
+    },
     y: {
+      border: { color: axisColor },
+      grid: {
+        color: (ctx) =>
+          ctx.tick.value === 0 ? axisColor : "rgba(160,160,160,0.2)",
+      },
       ticks: {
+        color: axisColor,
         callback: (value) => (value / 100).toFixed(0),
       },
     },
@@ -101,6 +138,9 @@ async function loadDailySummary() {
     const green = styles.getPropertyValue("--p-green-500").trim();
     const red = styles.getPropertyValue("--p-red-500").trim();
 
+    netCents.value =
+      income.reduce((s, v) => s + v, 0) + expenses.reduce((s, v) => s + v, 0);
+
     chartData.value = {
       labels,
       datasets: [
@@ -132,7 +172,8 @@ watch(
   <section v-if="chartData">
     <h2>Daily Income & Expenses</h2>
     <div class="chart-container">
-      <Chart type="bar" :data="chartData" :options="chartOptions" style="height: 100%" />
+      <Chart type="bar" :data="chartData" :options="chartOptions" :plugins="chartPlugins"
+        :pt="{ root: { style: 'height: 100%' } }" />
     </div>
   </section>
 </template>
