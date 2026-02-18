@@ -81,10 +81,16 @@ pub fn import_csv(
 
     let account = account_service::find_or_create(conn, &account_iban, &currency)?;
 
+    // Compute date range from ALL parsed transactions (not just imported ones)
+    let date_from = parsed.iter()
+        .map(|tx| tx.accounting_date.format("%Y-%m-%d").to_string())
+        .min();
+    let date_to = parsed.iter()
+        .map(|tx| tx.accounting_date.format("%Y-%m-%d").to_string())
+        .max();
+
     let mut imported = 0;
     let mut skipped = 0;
-    let mut date_from: Option<String> = None;
-    let mut date_to: Option<String> = None;
 
     for csv_tx in &parsed {
         let hash = compute_import_hash(csv_tx);
@@ -132,18 +138,6 @@ pub fn import_csv(
 
         transaction_service::insert(conn, &new)?;
         imported += 1;
-
-        // Track date range
-        match &date_from {
-            None => date_from = Some(acct_date.clone()),
-            Some(existing) if acct_date < *existing => date_from = Some(acct_date.clone()),
-            _ => {}
-        }
-        match &date_to {
-            None => date_to = Some(acct_date.clone()),
-            Some(existing) if acct_date > *existing => date_to = Some(acct_date.clone()),
-            _ => {}
-        }
     }
 
     // Record the import
@@ -242,6 +236,21 @@ mod tests {
         let second = import_csv(conn, "test.csv", &content).unwrap();
         assert_eq!(second.imported, 0, "Re-import should skip all duplicates");
         assert_eq!(second.skipped_duplicates, first.total_parsed);
+    }
+
+    #[test]
+    fn test_reimport_still_returns_date_range() {
+        let conn = &mut establish_test_connection();
+        let content = sample_csv();
+
+        let first = import_csv(conn, "test.csv", &content).unwrap();
+        assert!(first.date_from.is_some(), "First import should have date_from");
+        assert!(first.date_to.is_some(), "First import should have date_to");
+
+        let second = import_csv(conn, "re-import.csv", &content).unwrap();
+        assert_eq!(second.imported, 0, "Re-import should skip all duplicates");
+        assert_eq!(second.date_from, first.date_from, "Re-import should return same date_from");
+        assert_eq!(second.date_to, first.date_to, "Re-import should return same date_to");
     }
 
     #[test]
