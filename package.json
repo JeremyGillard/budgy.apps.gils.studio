@@ -1,0 +1,31 @@
+{
+  "name": "budgy.apps.gils.studio",
+  "version": "1.0.0",
+  "description": "`Desktop application to have a clear vision of your monthly expenses`",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "tauri": "tauri"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JeremyGillard/budgy.apps.gils.studio.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/JeremyGillard/budgy.apps.gils.studio/issues"
+  },
+  "homepage": "https://github.com/JeremyGillard/budgy.apps.gils.studio#readme",
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.0",
+    "vite": "^7.3.1"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-dialog": "^2.6.0"
+  }
+}

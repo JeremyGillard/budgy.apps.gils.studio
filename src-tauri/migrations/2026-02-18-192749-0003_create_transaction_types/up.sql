@@ -1,0 +1,5 @@
+CREATE TABLE transaction_types (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    label TEXT NOT NULL
+);
