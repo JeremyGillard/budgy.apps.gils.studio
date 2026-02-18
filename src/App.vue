@@ -10,12 +10,14 @@ import MonthlySummary from "./components/MonthlySummary.vue";
 import DailyChart from "./components/DailyChart.vue";
 import TransactionTable from "./components/TransactionTable.vue";
 import Sidebar from "./components/Sidebar.vue";
+import CategorizeView from "./components/CategorizeView.vue";
 
 const toast = useToast();
 
 const now = new Date();
 const currentYear = ref(now.getFullYear());
 const currentMonth = ref(now.getMonth() + 1);
+const currentPage = ref("months");
 
 const accounts = ref([]);
 const selectedAccount = ref(null);
@@ -91,7 +93,7 @@ loadAccounts();
 
 <template>
   <div class="app-layout">
-    <Sidebar />
+    <Sidebar :currentPage="currentPage" @navigate="currentPage = $event" />
     <div class="main-content">
       <Toast />
       <div class="app-container">
@@ -110,25 +112,37 @@ loadAccounts();
           </div>
         </header>
 
-        <MonthlySummary
+        <template v-if="currentPage === 'months'">
+          <MonthlySummary
+            :year="currentYear"
+            :month="currentMonth"
+            :refresh-key="refreshKey"
+            @prev="prevMonth"
+            @next="nextMonth"
+            @navigate="({ year, month }) => { currentYear = year; currentMonth = month; }"
+          />
+
+          <DailyChart
+            :year="currentYear"
+            :month="currentMonth"
+            :refresh-key="refreshKey"
+          />
+
+          <TransactionTable
+            :year="currentYear"
+            :month="currentMonth"
+            :refresh-key="refreshKey"
+          />
+        </template>
+
+        <CategorizeView
+          v-if="currentPage === 'categorize'"
           :year="currentYear"
           :month="currentMonth"
           :refresh-key="refreshKey"
           @prev="prevMonth"
           @next="nextMonth"
           @navigate="({ year, month }) => { currentYear = year; currentMonth = month; }"
-        />
-
-        <DailyChart
-          :year="currentYear"
-          :month="currentMonth"
-          :refresh-key="refreshKey"
-        />
-
-        <TransactionTable
-          :year="currentYear"
-          :month="currentMonth"
-          :refresh-key="refreshKey"
         />
       </div>
     </div>

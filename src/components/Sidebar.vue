@@ -1,3 +1,11 @@
+<script setup>
+defineProps({
+  currentPage: { type: String, default: "months" },
+});
+
+const emit = defineEmits(["navigate"]);
+</script>
+
 <template>
   <aside class="sidebar">
     <div class="brand">
@@ -5,9 +13,23 @@
       <span class="brand-title">Budgy</span>
     </div>
     <nav>
-      <a class="nav-item active" href="#">
+      <a
+        class="nav-item"
+        :class="{ active: currentPage === 'months' }"
+        href="#"
+        @click.prevent="emit('navigate', 'months')"
+      >
         <i class="pi pi-calendar"></i>
-        <span>Months</span>
+        <span>Monthly Balance</span>
+      </a>
+      <a
+        class="nav-item"
+        :class="{ active: currentPage === 'categorize' }"
+        href="#"
+        @click.prevent="emit('navigate', 'categorize')"
+      >
+        <i class="pi pi-tags"></i>
+        <span>Categorize</span>
       </a>
     </nav>
   </aside>
