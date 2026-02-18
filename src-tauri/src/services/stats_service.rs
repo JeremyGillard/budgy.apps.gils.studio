@@ -77,6 +77,48 @@ pub fn category_breakdown(
     Ok(results)
 }
 
+#[derive(Debug, Serialize)]
+pub struct DailySummary {
+    pub date: String,
+    pub total_income_cents: i64,
+    pub total_expenses_cents: i64,
+}
+
+pub fn daily_summary(
+    conn: &mut SqliteConnection,
+    year: i32,
+    month: u32,
+) -> Result<Vec<DailySummary>, BudgyError> {
+    let start = format!("{:04}-{:02}-01", year, month);
+    let end = format!("{:04}-{:02}-31", year, month);
+
+    let rows: Vec<(String, i32)> = transactions::table
+        .filter(transactions::accounting_date.ge(&start))
+        .filter(transactions::accounting_date.le(&end))
+        .select((transactions::accounting_date, transactions::amount_cents))
+        .load(conn)?;
+
+    let mut by_date: std::collections::BTreeMap<String, (i64, i64)> =
+        std::collections::BTreeMap::new();
+    for (date, amount) in rows {
+        let entry = by_date.entry(date).or_insert((0, 0));
+        if amount > 0 {
+            entry.0 += amount as i64;
+        } else {
+            entry.1 += amount as i64;
+        }
+    }
+
+    Ok(by_date
+        .into_iter()
+        .map(|(date, (income, expenses))| DailySummary {
+            date,
+            total_income_cents: income,
+            total_expenses_cents: expenses,
+        })
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,6 +151,25 @@ mod tests {
         assert_eq!(summary.total_income_cents, 0);
         assert_eq!(summary.total_expenses_cents, 0);
         assert_eq!(summary.net_cents, 0);
+    }
+
+    #[test]
+    fn test_daily_summary_with_data() {
+        let conn = &mut establish_test_connection();
+        import_service::import_csv(conn, "test.csv", &sample_csv()).unwrap();
+
+        let result = daily_summary(conn, 2024, 12).unwrap();
+        assert!(!result.is_empty(), "December should have daily entries");
+        for day in &result {
+            assert!(day.date.starts_with("2024-12-"));
+        }
+    }
+
+    #[test]
+    fn test_daily_summary_empty_month() {
+        let conn = &mut establish_test_connection();
+        let result = daily_summary(conn, 2020, 1).unwrap();
+        assert!(result.is_empty());
     }
 
     #[test]

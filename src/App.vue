@@ -7,6 +7,7 @@ import Select from "primevue/select";
 import Toast from "primevue/toast";
 import { useToast } from "primevue/usetoast";
 import MonthlySummary from "./components/MonthlySummary.vue";
+import DailyChart from "./components/DailyChart.vue";
 import TransactionTable from "./components/TransactionTable.vue";
 
 const toast = useToast();
@@ -114,6 +115,12 @@ loadAccounts();
       @prev="prevMonth"
       @next="nextMonth"
       @navigate="({ year, month }) => { currentYear = year; currentMonth = month; }"
+    />
+
+    <DailyChart
+      :year="currentYear"
+      :month="currentMonth"
+      :refresh-key="refreshKey"
     />
 
     <TransactionTable

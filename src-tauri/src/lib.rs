@@ -40,6 +40,7 @@ pub fn run() {
             commands::category_commands::list_categories,
             commands::stats_commands::monthly_summary,
             commands::stats_commands::category_breakdown,
+            commands::stats_commands::daily_summary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
