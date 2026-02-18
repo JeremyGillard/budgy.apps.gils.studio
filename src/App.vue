@@ -9,6 +9,7 @@ import { useToast } from "primevue/usetoast";
 import MonthlySummary from "./components/MonthlySummary.vue";
 import DailyChart from "./components/DailyChart.vue";
 import TransactionTable from "./components/TransactionTable.vue";
+import Sidebar from "./components/Sidebar.vue";
 
 const toast = useToast();
 
@@ -89,44 +90,48 @@ loadAccounts();
 </script>
 
 <template>
-  <div class="app-container">
-    <Toast />
-    <header>
-      <h1>Budgy</h1>
-      <div class="actions">
-        <Button label="Import CSV" icon="pi pi-upload" @click="importCsv" />
-        <Select
-          v-model="selectedAccount"
-          :options="accounts"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="All accounts"
-          showClear
-          class="account-select"
+  <div class="app-layout">
+    <Sidebar />
+    <div class="main-content">
+      <Toast />
+      <div class="app-container">
+        <header>
+          <div class="actions">
+            <Button label="Import CSV" icon="pi pi-upload" @click="importCsv" />
+            <Select
+              v-model="selectedAccount"
+              :options="accounts"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="All accounts"
+              showClear
+              class="account-select"
+            />
+          </div>
+        </header>
+
+        <MonthlySummary
+          :year="currentYear"
+          :month="currentMonth"
+          :refresh-key="refreshKey"
+          @prev="prevMonth"
+          @next="nextMonth"
+          @navigate="({ year, month }) => { currentYear = year; currentMonth = month; }"
+        />
+
+        <DailyChart
+          :year="currentYear"
+          :month="currentMonth"
+          :refresh-key="refreshKey"
+        />
+
+        <TransactionTable
+          :year="currentYear"
+          :month="currentMonth"
+          :refresh-key="refreshKey"
         />
       </div>
-    </header>
-
-    <MonthlySummary
-      :year="currentYear"
-      :month="currentMonth"
-      :refresh-key="refreshKey"
-      @prev="prevMonth"
-      @next="nextMonth"
-      @navigate="({ year, month }) => { currentYear = year; currentMonth = month; }"
-    />
-
-    <DailyChart
-      :year="currentYear"
-      :month="currentMonth"
-      :refresh-key="refreshKey"
-    />
-
-    <TransactionTable
-      :year="currentYear"
-      :month="currentMonth"
-      :refresh-key="refreshKey"
-    />
+    </div>
   </div>
 </template>
 
@@ -142,13 +147,24 @@ loadAccounts();
 
 body {
   margin: 0;
-  padding: 1.5rem;
+  padding: 0;
   background-color: var(--p-surface-ground);
   color: var(--p-text-color);
 }
 </style>
 
 <style scoped>
+.app-layout {
+  display: flex;
+  height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
 .app-container {
   max-width: 1100px;
   margin: 0 auto;
@@ -156,14 +172,9 @@ body {
 
 header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: 1.5rem;
-}
-
-header h1 {
-  font-size: 1.5rem;
-  margin: 0;
 }
 
 .actions {
