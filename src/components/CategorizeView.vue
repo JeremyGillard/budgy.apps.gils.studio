@@ -6,6 +6,9 @@ import Column from "primevue/column";
 import Select from "primevue/select";
 import Button from "primevue/button";
 import DatePicker from "primevue/datepicker";
+import InputText from "primevue/inputtext";
+import IconField from "primevue/iconfield";
+import InputIcon from "primevue/inputicon";
 import Tag from "primevue/tag";
 import { useToast } from "primevue/usetoast";
 
@@ -30,6 +33,8 @@ const selectedDate = computed({
 
 const transactions = ref([]);
 const categories = ref([]);
+const searchQuery = ref("");
+const searchInputRef = ref(null);
 const selectedRows = ref([]);
 const bulkCategoryId = ref(null);
 const loading = ref(false);
@@ -48,7 +53,11 @@ const categoryOptions = computed(() =>
 );
 
 const sortedTransactions = computed(() => {
-  const txs = [...transactions.value];
+  let txs = [...transactions.value];
+  const q = searchQuery.value.trim().toLowerCase();
+  if (q) {
+    txs = txs.filter((t) => t.description?.toLowerCase().includes(q));
+  }
   txs.sort((a, b) => {
     // Uncategorized first
     const aUncat = a.category_id == null ? 0 : 1;
@@ -63,6 +72,10 @@ const sortedTransactions = computed(() => {
 const uncategorizedCount = computed(
   () => transactions.value.filter((t) => t.category_id == null).length
 );
+
+function focusSearch() {
+  searchInputRef.value?.$el?.focus();
+}
 
 function formatAmount(cents) {
   const val = (cents / 100).toFixed(2);
@@ -142,7 +155,10 @@ async function bulkApply() {
 
 watch(
   () => [props.year, props.month, props.refreshKey],
-  () => loadData(),
+  () => {
+    searchQuery.value = "";
+    loadData();
+  },
   { immediate: true },
 );
 </script>
@@ -193,6 +209,10 @@ watch(
         aria-label="Next month"
         @click="emit('next')"
       />
+      <IconField class="search-field">
+        <InputIcon class="pi pi-search" @click="focusSearch" style="cursor: pointer" />
+        <InputText ref="searchInputRef" v-model="searchQuery" placeholder="Search by description..." />
+      </IconField>
     </div>
 
     <div v-if="selectedRows.length" class="bulk-toolbar">
@@ -292,6 +312,10 @@ watch(
 
 .month-picker {
   width: 12rem;
+}
+
+.search-field {
+  flex: 1;
 }
 
 .summary-cards {
