@@ -1,7 +1,8 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, computed, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import Button from "primevue/button";
+import DatePicker from "primevue/datepicker";
 
 const props = defineProps({
   year: { type: Number, required: true },
@@ -9,12 +10,16 @@ const props = defineProps({
   refreshKey: { type: Number, default: 0 },
 });
 
-const emit = defineEmits(["prev", "next"]);
+const emit = defineEmits(["prev", "next", "navigate"]);
 
-const monthNames = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
+const selectedDate = computed({
+  get: () => new Date(props.year, props.month - 1, 1),
+  set: (val) => {
+    if (val) {
+      emit("navigate", { year: val.getFullYear(), month: val.getMonth() + 1 });
+    }
+  },
+});
 
 const income = ref(null);
 const expenses = ref(null);
@@ -58,7 +63,14 @@ watch(
         aria-label="Previous month"
         @click="emit('prev')"
       />
-      <span class="month-label">{{ monthNames[month - 1] }} {{ year }}</span>
+      <DatePicker
+        v-model="selectedDate"
+        view="month"
+        dateFormat="MM yy"
+        showIcon
+        iconDisplay="input"
+        class="month-picker"
+      />
       <Button
         icon="pi pi-chevron-right"
         text
@@ -97,10 +109,8 @@ h2 {
   margin-bottom: 1rem;
 }
 
-.month-label {
-  font-weight: 600;
-  min-width: 10rem;
-  text-align: center;
+.month-picker {
+  width: 12rem;
 }
 
 .summary-cards {

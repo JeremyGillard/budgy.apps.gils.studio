@@ -54,8 +54,8 @@ async function importCsv() {
 
     toast.add({ severity: "success", summary: "Import complete", detail, life: 5000 });
 
-    if (result.date_to) {
-      const [y, m] = result.date_to.split("-").map(Number);
+    if (result.date_from) {
+      const [y, m] = result.date_from.split("-").map(Number);
       currentYear.value = y;
       currentMonth.value = m;
     }
@@ -113,6 +113,7 @@ loadAccounts();
       :refresh-key="refreshKey"
       @prev="prevMonth"
       @next="nextMonth"
+      @navigate="({ year, month }) => { currentYear = year; currentMonth = month; }"
     />
 
     <TransactionTable
