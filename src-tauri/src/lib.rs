@@ -44,6 +44,7 @@ pub fn run() {
             commands::stats_commands::monthly_summary,
             commands::stats_commands::category_breakdown,
             commands::stats_commands::daily_summary,
+            commands::stats_commands::get_imported_months,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

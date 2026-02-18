@@ -84,6 +84,27 @@ pub struct DailySummary {
     pub total_expenses_cents: i64,
 }
 
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct ImportedMonth {
+    #[diesel(sql_type = Integer)]
+    pub year: i32,
+    #[diesel(sql_type = Integer)]
+    pub month: i32,
+}
+
+pub fn imported_months(conn: &mut SqliteConnection) -> Result<Vec<ImportedMonth>, BudgyError> {
+    let results = diesel::sql_query(
+        "SELECT CAST(strftime('%Y', accounting_date) AS INTEGER) as year, \
+         CAST(strftime('%m', accounting_date) AS INTEGER) as month \
+         FROM transactions \
+         GROUP BY year, month \
+         ORDER BY year, month",
+    )
+    .load::<ImportedMonth>(conn)?;
+
+    Ok(results)
+}
+
 pub fn daily_summary(
     conn: &mut SqliteConnection,
     year: i32,
@@ -180,5 +201,24 @@ mod tests {
         let breakdown = category_breakdown(conn, 2024, 12).unwrap();
         // All uncategorized at this point, so should have 1 group with null category
         assert!(!breakdown.is_empty());
+    }
+
+    #[test]
+    fn test_imported_months() {
+        let conn = &mut establish_test_connection();
+        import_service::import_csv(conn, "test.csv", &sample_csv()).unwrap();
+
+        let months = imported_months(conn).unwrap();
+        assert!(!months.is_empty(), "Should have imported months");
+        // Verify all entries have valid year/month
+        for m in &months {
+            assert!(m.year >= 2000 && m.year <= 2100);
+            assert!(m.month >= 1 && m.month <= 12);
+        }
+        // Sample data includes December 2024
+        assert!(
+            months.iter().any(|m| m.year == 2024 && m.month == 12),
+            "Should contain December 2024"
+        );
     }
 }

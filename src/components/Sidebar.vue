@@ -15,6 +15,15 @@ const emit = defineEmits(["navigate"]);
     <nav>
       <a
         class="nav-item"
+        :class="{ active: currentPage === 'overview' }"
+        href="#"
+        @click.prevent="emit('navigate', 'overview')"
+      >
+        <i class="pi pi-th-large"></i>
+        <span>Overview</span>
+      </a>
+      <a
+        class="nav-item"
         :class="{ active: currentPage === 'months' }"
         href="#"
         @click.prevent="emit('navigate', 'months')"

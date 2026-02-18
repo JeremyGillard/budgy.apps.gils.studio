@@ -11,6 +11,7 @@ import DailyChart from "./components/DailyChart.vue";
 import TransactionTable from "./components/TransactionTable.vue";
 import Sidebar from "./components/Sidebar.vue";
 import CategorizeView from "./components/CategorizeView.vue";
+import OverviewView from "./components/OverviewView.vue";
 
 const toast = useToast();
 
@@ -111,6 +112,12 @@ loadAccounts();
             />
           </div>
         </header>
+
+        <OverviewView
+          v-if="currentPage === 'overview'"
+          :refresh-key="refreshKey"
+          @navigate="({ year, month }) => { currentYear = year; currentMonth = month; currentPage = 'months'; }"
+        />
 
         <template v-if="currentPage === 'months'">
           <MonthlySummary

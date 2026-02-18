@@ -2,7 +2,7 @@ use tauri::State;
 
 use crate::commands::import_commands::DbConn;
 use crate::error::BudgyError;
-use crate::services::stats_service::{self, CategoryBreakdown, DailySummary, MonthlySummary};
+use crate::services::stats_service::{self, CategoryBreakdown, DailySummary, ImportedMonth, MonthlySummary};
 
 #[tauri::command]
 pub fn monthly_summary(
@@ -32,4 +32,12 @@ pub fn daily_summary(
 ) -> Result<Vec<DailySummary>, BudgyError> {
     let mut conn = db.0.lock().map_err(|e| BudgyError::General(e.to_string()))?;
     stats_service::daily_summary(&mut conn, year, month)
+}
+
+#[tauri::command]
+pub fn get_imported_months(
+    db: State<DbConn>,
+) -> Result<Vec<ImportedMonth>, BudgyError> {
+    let mut conn = db.0.lock().map_err(|e| BudgyError::General(e.to_string()))?;
+    stats_service::imported_months(&mut conn)
 }
