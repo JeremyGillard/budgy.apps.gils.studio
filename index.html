@@ -4,61 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Budgy</title>
-    <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <div id="app">
-      <header>
-        <h1>Budgy</h1>
-        <div class="actions">
-          <button id="import-btn">Import CSV</button>
-          <select id="account-select">
-            <option value="">All accounts</option>
-          </select>
-        </div>
-      </header>
-
-      <div id="import-result" class="notice" hidden></div>
-
-      <section id="summary-section">
-        <h2>Monthly Summary</h2>
-        <div class="month-nav">
-          <button id="prev-month">&lt;</button>
-          <span id="current-month"></span>
-          <button id="next-month">&gt;</button>
-        </div>
-        <div class="summary-cards">
-          <div class="card income">
-            <span class="card-label">Income</span>
-            <span id="income-amount" class="card-value">-</span>
-          </div>
-          <div class="card expenses">
-            <span class="card-label">Expenses</span>
-            <span id="expenses-amount" class="card-value">-</span>
-          </div>
-          <div class="card net">
-            <span class="card-label">Net</span>
-            <span id="net-amount" class="card-value">-</span>
-          </div>
-        </div>
-      </section>
-
-      <section id="transactions-section">
-        <h2>Transactions <span id="tx-count"></span></h2>
-        <table id="transactions-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Description</th>
-              <th>Counterparty</th>
-              <th>Communication</th>
-              <th class="amount-col">Amount</th>
-            </tr>
-          </thead>
-          <tbody id="transactions-body"></tbody>
-        </table>
-      </section>
-    </div>
+    <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
