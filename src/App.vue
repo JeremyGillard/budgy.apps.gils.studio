@@ -35,28 +35,27 @@ async function loadAccounts() {
 
 async function importCsv() {
   try {
-    const filePath = await open({
-      multiple: false,
+    const filePaths = await open({
+      multiple: true,
       filters: [{ name: "CSV", extensions: ["csv"] }],
     });
 
-    if (!filePath) return;
+    if (!filePaths?.length) return;
 
-    const result = await invoke("import_csv", { filePath });
+    const results = await invoke("import_csv", { filePaths });
 
-    let detail =
-      `Imported ${result.imported} transactions from ${result.account_iban}`;
-    if (result.skipped_duplicates > 0) {
-      detail += ` (${result.skipped_duplicates} duplicates skipped)`;
-    }
-    if (result.date_from) {
-      detail += ` | ${result.date_from} to ${result.date_to}`;
+    const totalImported = results.reduce((s, r) => s + r.imported, 0);
+    const totalSkipped = results.reduce((s, r) => s + r.skipped_duplicates, 0);
+    let detail = `Imported ${totalImported} transactions from ${results.length} file(s)`;
+    if (totalSkipped > 0) {
+      detail += ` (${totalSkipped} duplicates skipped)`;
     }
 
     toast.add({ severity: "success", summary: "Import complete", detail, life: 5000 });
 
-    if (result.date_from) {
-      const [y, m] = result.date_from.split("-").map(Number);
+    const firstDate = results.find((r) => r.date_from)?.date_from;
+    if (firstDate) {
+      const [y, m] = firstDate.split("-").map(Number);
       currentYear.value = y;
       currentMonth.value = m;
     }
