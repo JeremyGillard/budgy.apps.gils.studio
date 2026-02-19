@@ -3,8 +3,8 @@ use tauri::State;
 use crate::commands::import_commands::DbConn;
 use crate::error::BudgyError;
 use crate::services::stats_service::{
-    self, AvgMonthlyCategorySpend, CategoryBreakdown, DailySummary, ImportedMonth, MonthlySummary,
-    YearlyTopCategories,
+    self, AvgMonthlyCategorySpend, CategoryBreakdown, CategoryTransactionCount, DailySummary,
+    ImportedMonth, MonthlySummary, YearlyTopCategories,
 };
 
 #[tauri::command]
@@ -67,6 +67,15 @@ pub fn yearly_expenses(
     let mut guard = db.0.lock().map_err(|e| BudgyError::General(e.to_string()))?;
     let conn = guard.as_mut().ok_or(BudgyError::DatabaseLocked)?;
     stats_service::yearly_expenses_by_category(conn, year)
+}
+
+#[tauri::command]
+pub fn category_transaction_counts(
+    db: State<DbConn>,
+) -> Result<Vec<CategoryTransactionCount>, BudgyError> {
+    let mut guard = db.0.lock().map_err(|e| BudgyError::General(e.to_string()))?;
+    let conn = guard.as_mut().ok_or(BudgyError::DatabaseLocked)?;
+    stats_service::category_transaction_counts(conn)
 }
 
 #[tauri::command]

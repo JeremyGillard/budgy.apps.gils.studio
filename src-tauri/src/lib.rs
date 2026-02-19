@@ -52,6 +52,7 @@ pub fn run() {
             commands::stats_commands::yearly_earnings,
             commands::stats_commands::yearly_expenses,
             commands::stats_commands::avg_monthly_spend,
+            commands::stats_commands::category_transaction_counts,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -22,8 +22,8 @@ const categoriesVersion = ref(0);
 <template>
   <Tabs value="categorize">
     <TabList>
-      <Tab value="categorize">Categorize</Tab>
-      <Tab value="manage">Manage</Tab>
+      <Tab value="categorize"><i class="pi pi-tags" /> Categorize</Tab>
+      <Tab value="manage"><i class="pi pi-cog" /> Manage</Tab>
     </TabList>
     <TabPanels>
       <TabPanel value="categorize">
@@ -43,3 +43,11 @@ const categoriesVersion = ref(0);
     </TabPanels>
   </Tabs>
 </template>
+
+<style scoped>
+:deep(.p-tab) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+</style>

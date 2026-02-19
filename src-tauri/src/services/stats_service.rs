@@ -247,6 +247,34 @@ pub fn yearly_expenses_by_category(
     })
 }
 
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct CategoryTransactionCount {
+    #[diesel(sql_type = Integer)]
+    pub category_id: i32,
+    #[diesel(sql_type = Text)]
+    pub category_name: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub category_color: Option<String>,
+    #[diesel(sql_type = Integer)]
+    pub count: i32,
+}
+
+pub fn category_transaction_counts(
+    conn: &mut SqliteConnection,
+) -> Result<Vec<CategoryTransactionCount>, BudgyError> {
+    let results = diesel::sql_query(
+        "SELECT c.id AS category_id, c.name AS category_name, c.color AS category_color, \
+         CAST(COUNT(t.id) AS INTEGER) AS count \
+         FROM categories c \
+         LEFT JOIN transactions t ON t.category_id = c.id \
+         GROUP BY c.id \
+         ORDER BY count DESC",
+    )
+    .load::<CategoryTransactionCount>(conn)?;
+
+    Ok(results)
+}
+
 pub fn avg_monthly_category_spend(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<AvgMonthlyCategorySpend>, BudgyError> {
@@ -425,5 +453,30 @@ mod tests {
         let conn = &mut establish_test_connection();
         let result = avg_monthly_category_spend(conn).unwrap();
         assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_category_transaction_counts_empty() {
+        let conn = &mut establish_test_connection();
+        let result = category_transaction_counts(conn).unwrap();
+        // Seeded categories should all be present with count 0
+        assert!(!result.is_empty(), "Should return seeded categories");
+        for cat in &result {
+            assert_eq!(cat.count, 0, "No transactions yet, count should be 0");
+            assert!(!cat.category_name.is_empty());
+        }
+    }
+
+    #[test]
+    #[ignore] // requires .samples/ directory (not available in CI)
+    fn test_category_transaction_counts_with_data() {
+        let conn = &mut establish_test_connection();
+        import_service::import_csv(conn, "test.csv", &sample_csv()).unwrap();
+
+        let result = category_transaction_counts(conn).unwrap();
+        assert!(!result.is_empty());
+        // At least one category should have transactions (Uncategorized gets them by default)
+        let total: i32 = result.iter().map(|c| c.count).sum();
+        assert!(total > 0, "Should have some transactions assigned");
     }
 }
