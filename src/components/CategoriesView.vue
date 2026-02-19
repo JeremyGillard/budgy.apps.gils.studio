@@ -14,6 +14,7 @@ const emit = defineEmits(["categories-changed"]);
 const toast = useToast();
 
 const categories = ref([]);
+const txCounts = ref({});
 const loading = ref(false);
 
 const showDialog = ref(false);
@@ -51,7 +52,16 @@ const categoryMap = computed(() => {
 async function loadCategories() {
   loading.value = true;
   try {
-    categories.value = await invoke("list_categories");
+    const [cats, counts] = await Promise.all([
+      invoke("list_categories"),
+      invoke("category_transaction_counts"),
+    ]);
+    categories.value = cats;
+    const map = {};
+    for (const row of counts) {
+      map[row.category_id] = row.count;
+    }
+    txCounts.value = map;
   } catch (e) {
     toast.add({ severity: "error", summary: "Failed to load categories", detail: String(e), life: 5000 });
   } finally {
@@ -148,6 +158,11 @@ onMounted(loadCategories);
       <Column header="Parent" style="width: 25%">
         <template #body="{ data }">
           {{ data.parent_id ? (categoryMap[data.parent_id]?.name ?? '—') : '—' }}
+        </template>
+      </Column>
+      <Column header="Transactions" style="width: 8rem">
+        <template #body="{ data }">
+          {{ txCounts[data.id] ?? 0 }}
         </template>
       </Column>
       <Column header="Actions" style="width: 10rem">

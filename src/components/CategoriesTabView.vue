@@ -7,7 +7,6 @@ import TabPanels from "primevue/tabpanels";
 import TabPanel from "primevue/tabpanel";
 import CategorizeView from "./CategorizeView.vue";
 import CategoriesView from "./CategoriesView.vue";
-import CategoryInsightsView from "./CategoryInsightsView.vue";
 
 defineProps({
   year: { type: Number, required: true },
@@ -25,7 +24,6 @@ const categoriesVersion = ref(0);
     <TabList>
       <Tab value="categorize"><i class="pi pi-tags" /> Categorize</Tab>
       <Tab value="manage"><i class="pi pi-cog" /> Manage</Tab>
-      <Tab value="insights"><i class="pi pi-chart-bar" /> Insights</Tab>
     </TabList>
     <TabPanels>
       <TabPanel value="categorize">
@@ -42,9 +40,14 @@ const categoriesVersion = ref(0);
       <TabPanel value="manage">
         <CategoriesView @categories-changed="categoriesVersion++" />
       </TabPanel>
-      <TabPanel value="insights">
-        <CategoryInsightsView :categories-version="categoriesVersion" />
-      </TabPanel>
     </TabPanels>
   </Tabs>
 </template>
+
+<style scoped>
+:deep(.p-tab) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+</style>
