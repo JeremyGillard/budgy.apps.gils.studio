@@ -59,7 +59,11 @@ const sortedTransactions = computed(() => {
   let txs = [...transactions.value];
   const q = searchQuery.value.trim().toLowerCase();
   if (q) {
-    txs = txs.filter((t) => t.description?.toLowerCase().includes(q));
+    txs = txs.filter(
+      (t) =>
+        t.description?.toLowerCase().includes(q) ||
+        t.counterparty_name?.toLowerCase().includes(q)
+    );
   }
   if (showSuggestionsOnly.value) {
     txs = txs.filter((t) => suggestions.value[t.id] != null);
@@ -230,7 +234,7 @@ watch(
       />
       <IconField class="search-field">
         <InputIcon class="pi pi-search" @click="focusSearch" style="cursor: pointer" />
-        <InputText ref="searchInputRef" v-model="searchQuery" placeholder="Search by description..." />
+        <InputText ref="searchInputRef" v-model="searchQuery" placeholder="Search by description or counterparty..." />
       </IconField>
       <Button
         label="Suggestions only"
@@ -284,10 +288,17 @@ watch(
         </template>
       </Column>
       <Column field="accounting_date" header="Date" style="width: 9%; white-space: nowrap" />
-      <Column field="description" header="Description" style="width: 43%">
+      <Column field="description" header="Description" style="width: 28%">
         <template #body="{ data }">
           <span class="description-cell" :title="data.description">
             {{ data.description }}
+          </span>
+        </template>
+      </Column>
+      <Column field="counterparty_name" header="Counterparty" style="width: 15%">
+        <template #body="{ data }">
+          <span class="counterparty-cell" :title="data.counterparty_name">
+            {{ data.counterparty_name || '\u2014' }}
           </span>
         </template>
       </Column>
@@ -436,7 +447,15 @@ watch(
 
 .description-cell {
   display: block;
-  max-width: 100%;
+  max-width: 350px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.counterparty-cell {
+  display: block;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
