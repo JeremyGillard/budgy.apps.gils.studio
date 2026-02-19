@@ -384,6 +384,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // requires .samples/ directory (not available in CI)
     fn test_parse_full_sample_file() {
         let content = std::fs::read(concat!(
             env!("CARGO_MANIFEST_DIR"),
@@ -411,6 +412,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // requires .samples/ directory (not available in CI)
     fn test_parse_row_with_counterparty() {
         let content = std::fs::read(concat!(
             env!("CARGO_MANIFEST_DIR"),

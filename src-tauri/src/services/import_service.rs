@@ -206,6 +206,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // requires .samples/ directory (not available in CI)
     fn test_full_import_pipeline() {
         let conn = &mut establish_test_connection();
         let content = sample_csv();
@@ -226,6 +227,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // requires .samples/ directory (not available in CI)
     fn test_reimport_dedup() {
         let conn = &mut establish_test_connection();
         let content = sample_csv();
@@ -239,6 +241,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // requires .samples/ directory (not available in CI)
     fn test_reimport_still_returns_date_range() {
         let conn = &mut establish_test_connection();
         let content = sample_csv();
@@ -254,6 +257,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // requires .samples/ directory (not available in CI)
     fn test_import_creates_account() {
         let conn = &mut establish_test_connection();
         let content = sample_csv();
@@ -266,6 +270,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // requires .samples/ directory (not available in CI)
     fn test_import_creates_counterparties() {
         let conn = &mut establish_test_connection();
         let content = sample_csv();
