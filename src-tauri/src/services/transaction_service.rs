@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use crate::db::schema::transactions;
 use crate::error::BudgyError;
-use crate::models::transaction::{NewTransaction, Transaction};
+use crate::models::transaction::NewTransaction;
 
 #[derive(Debug, Serialize, QueryableByName)]
 pub struct CategorySuggestion {
@@ -224,6 +224,7 @@ mod tests {
     use crate::db::schema::{accounts, categories, transaction_types};
     use crate::models::account::NewAccount;
     use crate::models::category::Category;
+    use crate::models::transaction::Transaction;
     use crate::services::counterparty_service;
 
     fn setup(conn: &mut SqliteConnection) -> (i32, i32) {
