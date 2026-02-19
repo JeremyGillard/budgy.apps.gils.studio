@@ -94,4 +94,4 @@ When finishing work on a task:
 4. Send a Slack notification (see below)
 
 ### Slack notifications
-After completing a task, send a short Slack notification via the webhook in `.env` (`SLACK_HOOK`). The message should be prefixed with ✅ and be a very short title describing the task without the conventional commit type prefix (e.g. "✅ add category CRUD" not "feat: add category CRUD"). Use `curl` with the webhook URL.
+After completing a task, send a Slack notification via the webhook in `.env` (`SLACK_HOOK`). The message should be the PR title followed by the PR link (e.g. "feat: add category CRUD https://github.com/…/pull/1"). Use `curl` with the webhook URL.
