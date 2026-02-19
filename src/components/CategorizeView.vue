@@ -269,7 +269,7 @@ watch(
       tableStyle="min-width: 60rem"
     >
       <Column selectionMode="multiple" headerStyle="width: 3rem" />
-      <Column header="" style="width: 2.5rem">
+      <Column header="" style="width: 1.5rem; text-align: center">
         <template #body="{ data }">
           <i
             v-if="data.category_id == null"
@@ -283,7 +283,7 @@ watch(
           />
         </template>
       </Column>
-      <Column field="accounting_date" header="Date" style="width: 9%" />
+      <Column field="accounting_date" header="Date" style="width: 9%; white-space: nowrap" />
       <Column field="description" header="Description" style="width: 43%">
         <template #body="{ data }">
           <span class="description-cell" :title="data.description">
@@ -436,7 +436,7 @@ watch(
 
 .description-cell {
   display: block;
-  max-width: 300px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
