@@ -18,6 +18,7 @@ const props = defineProps({
   year: { type: Number, required: true },
   month: { type: Number, required: true },
   refreshKey: { type: Number, default: 0 },
+  categoriesVersion: { type: Number, default: 0 },
 });
 
 const emit = defineEmits(["prev", "next", "navigate"]);
@@ -172,7 +173,7 @@ async function bulkApply() {
 }
 
 watch(
-  () => [props.year, props.month, props.refreshKey],
+  () => [props.year, props.month, props.refreshKey, props.categoriesVersion],
   () => {
     searchQuery.value = "";
     loadData();

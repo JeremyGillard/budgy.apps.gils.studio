@@ -10,8 +10,7 @@ import MonthlySummary from "./components/MonthlySummary.vue";
 import DailyChart from "./components/DailyChart.vue";
 import TransactionTable from "./components/TransactionTable.vue";
 import Sidebar from "./components/Sidebar.vue";
-import CategorizeView from "./components/CategorizeView.vue";
-import CategoriesView from "./components/CategoriesView.vue";
+import CategoriesTabView from "./components/CategoriesTabView.vue";
 import OverviewView from "./components/OverviewView.vue";
 import LockScreen from "./components/LockScreen.vue";
 
@@ -163,10 +162,8 @@ function nextMonth() {
           />
         </template>
 
-        <CategoriesView v-if="currentPage === 'categories'" />
-
-        <CategorizeView
-          v-if="currentPage === 'categorize'"
+        <CategoriesTabView
+          v-if="currentPage === 'categories'"
           :year="currentYear"
           :month="currentMonth"
           :refresh-key="refreshKey"
