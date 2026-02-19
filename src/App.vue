@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import Button from "primevue/button";
@@ -12,8 +12,12 @@ import TransactionTable from "./components/TransactionTable.vue";
 import Sidebar from "./components/Sidebar.vue";
 import CategorizeView from "./components/CategorizeView.vue";
 import OverviewView from "./components/OverviewView.vue";
+import LockScreen from "./components/LockScreen.vue";
 
 const toast = useToast();
+
+const unlocked = ref(false);
+const dbStatus = ref(null);
 
 const now = new Date();
 const currentYear = ref(now.getFullYear());
@@ -24,6 +28,19 @@ const accounts = ref([]);
 const selectedAccount = ref(null);
 
 const refreshKey = ref(0);
+
+onMounted(async () => {
+  try {
+    dbStatus.value = await invoke("get_db_status");
+  } catch (e) {
+    console.error("Failed to get DB status:", e);
+  }
+});
+
+function onUnlocked() {
+  unlocked.value = true;
+  loadAccounts();
+}
 
 async function loadAccounts() {
   try {
@@ -88,12 +105,15 @@ function nextMonth() {
     currentMonth.value++;
   }
 }
-
-loadAccounts();
 </script>
 
 <template>
-  <div class="app-layout">
+  <LockScreen
+    v-if="!unlocked && dbStatus !== null"
+    :dbStatus="dbStatus"
+    @unlocked="onUnlocked"
+  />
+  <div v-if="unlocked" class="app-layout">
     <Sidebar :currentPage="currentPage" @navigate="currentPage = $event" />
     <div class="main-content">
       <Toast />

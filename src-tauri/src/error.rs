@@ -16,6 +16,12 @@ pub enum BudgyError {
 
     #[error("{0}")]
     General(String),
+
+    #[error("Database is locked — please unlock first")]
+    DatabaseLocked,
+
+    #[error("Wrong password")]
+    WrongPassword,
 }
 
 impl serde::Serialize for BudgyError {

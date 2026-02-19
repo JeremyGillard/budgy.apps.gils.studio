@@ -7,6 +7,7 @@ use crate::services::account_service;
 
 #[tauri::command]
 pub fn list_accounts(db: State<DbConn>) -> Result<Vec<Account>, BudgyError> {
-    let mut conn = db.0.lock().map_err(|e| BudgyError::General(e.to_string()))?;
-    account_service::list_all(&mut conn)
+    let mut guard = db.0.lock().map_err(|e| BudgyError::General(e.to_string()))?;
+    let conn = guard.as_mut().ok_or(BudgyError::DatabaseLocked)?;
+    account_service::list_all(conn)
 }

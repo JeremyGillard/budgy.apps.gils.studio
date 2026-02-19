@@ -7,8 +7,8 @@ pub mod services;
 
 use std::sync::Mutex;
 
+use commands::auth_commands::DbPath;
 use commands::import_commands::DbConn;
-use db::connection::{establish_connection, run_migrations};
 use tauri::Manager;
 
 pub fn run() {
@@ -24,14 +24,14 @@ pub fn run() {
             let db_path = app_dir.join("budgy.db");
             let db_url = db_path.to_string_lossy().to_string();
 
-            let mut conn = establish_connection(&db_url)
-                .expect("Failed to establish database connection");
-            run_migrations(&mut conn).expect("Failed to run migrations");
-
-            app.manage(DbConn(Mutex::new(conn)));
+            app.manage(DbConn(Mutex::new(None)));
+            app.manage(DbPath(db_url));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::auth_commands::get_db_status,
+            commands::auth_commands::unlock_db,
+            commands::auth_commands::setup_encryption,
             commands::import_commands::import_csv,
             commands::transaction_commands::list_transactions_by_month,
             commands::transaction_commands::list_transactions_by_account,
