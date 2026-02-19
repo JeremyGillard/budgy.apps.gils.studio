@@ -9,6 +9,7 @@ const props = defineProps({
 });
 
 const importedMonths = ref([]);
+const summaries = ref(new Map());
 
 const MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -35,8 +36,33 @@ const years = computed(() => {
   return result;
 });
 
+const maxAbsBalance = computed(() => {
+  let max = 0;
+  for (const s of summaries.value.values()) {
+    max = Math.max(max, Math.abs(s.net_cents));
+  }
+  return max;
+});
+
 function hasData(year, month) {
   return importedSet.value.has(`${year}-${String(month).padStart(2, "0")}`);
+}
+
+function cellStyle(year, month) {
+  const key = `${year}-${String(month).padStart(2, "0")}`;
+  const s = summaries.value.get(key);
+  if (!s || maxAbsBalance.value === 0) return {};
+
+  const ratio = Math.abs(s.net_cents) / maxAbsBalance.value;
+  const alpha = 0.15 + ratio * 0.45;
+
+  if (s.net_cents > 0) {
+    return { background: `rgba(76,175,80,${alpha})` };
+  } else if (s.net_cents < 0) {
+    return { background: `rgba(211,47,47,${alpha})` };
+  }
+
+  return {};
 }
 
 function onCellClick(year, month) {
@@ -48,6 +74,18 @@ function onCellClick(year, month) {
 async function loadMonths() {
   try {
     importedMonths.value = await invoke("get_imported_months");
+
+    const results = await Promise.all(
+      importedMonths.value.map((m) =>
+        invoke("monthly_summary", { year: m.year, month: m.month })
+      )
+    );
+
+    const map = new Map();
+    for (const s of results) {
+      map.set(`${s.year}-${String(s.month).padStart(2, "0")}`, s);
+    }
+    summaries.value = map;
   } catch (e) {
     console.error("Failed to load imported months:", e);
   }
@@ -76,6 +114,7 @@ onMounted(loadMonths);
           :key="month"
           class="month-cell"
           :class="{ imported: hasData(year, month), empty: !hasData(year, month) }"
+          :style="hasData(year, month) ? cellStyle(year, month) : {}"
           @click="onCellClick(year, month)"
         >
           {{ month }}
@@ -125,8 +164,11 @@ h2 {
 }
 
 .month-cell {
-  text-align: center;
-  padding: 0.5rem 0.25rem;
+  position: relative;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 6px;
   font-size: 0.8rem;
   font-weight: 500;
@@ -140,13 +182,13 @@ h2 {
 }
 
 .month-cell.imported {
-  background: var(--p-green-500);
-  color: var(--p-green-contrast-color, #fff);
+  background: var(--p-surface-100);
+  color: var(--p-text-color);
   cursor: pointer;
 }
 
 .month-cell.imported:hover {
-  background: var(--p-green-600);
+  filter: brightness(0.9);
   transform: scale(1.05);
 }
 </style>
