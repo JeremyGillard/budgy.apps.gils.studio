@@ -22,6 +22,7 @@ const form = ref({ name: "", parent_id: null, icon: null, color: null });
 
 const showDeleteConfirm = ref(false);
 const deletingCategory = ref(null);
+const reassignTo = ref(null);
 
 const isEditing = computed(() => editingId.value !== null);
 
@@ -30,6 +31,13 @@ const parentOptions = computed(() => {
     .filter((c) => c.id !== editingId.value)
     .map((c) => ({ label: c.name, value: c.id }));
   return [{ label: "None", value: null }, ...opts];
+});
+
+const reassignOptions = computed(() => {
+  if (!deletingCategory.value) return [];
+  return categories.value
+    .filter((c) => c.id !== deletingCategory.value.id)
+    .map((c) => ({ label: c.name, value: c.id }));
 });
 
 const categoryMap = computed(() => {
@@ -94,13 +102,16 @@ async function saveCategory() {
 
 function confirmDelete(category) {
   deletingCategory.value = category;
+  const uncategorized = categories.value.find((c) => c.name === "Uncategorized");
+  reassignTo.value = uncategorized ? uncategorized.id : null;
   showDeleteConfirm.value = true;
 }
 
 async function executeDelete() {
   try {
-    await invoke("delete_category", { id: deletingCategory.value.id });
-    toast.add({ severity: "success", summary: "Category deleted", detail: `"${deletingCategory.value.name}" deleted. Transactions reassigned to Uncategorized.`, life: 4000 });
+    const targetName = categories.value.find((c) => c.id === reassignTo.value)?.name ?? "Unknown";
+    await invoke("delete_category", { id: deletingCategory.value.id, reassignTo: reassignTo.value });
+    toast.add({ severity: "success", summary: "Category deleted", detail: `"${deletingCategory.value.name}" deleted. Transactions reassigned to "${targetName}".`, life: 4000 });
     showDeleteConfirm.value = false;
     deletingCategory.value = null;
     await loadCategories();
@@ -201,15 +212,27 @@ onMounted(loadCategories);
       v-model:visible="showDeleteConfirm"
       header="Delete Category"
       modal
-      :style="{ width: '24rem' }"
+      :style="{ width: '28rem' }"
     >
       <p>
         Delete <strong>{{ deletingCategory?.name }}</strong>?
-        Its transactions will be reassigned to "Uncategorized".
+        Its transactions will be reassigned to the category below.
       </p>
+      <div class="form-field">
+        <label for="reassign-category">Reassign to</label>
+        <Select
+          id="reassign-category"
+          v-model="reassignTo"
+          :options="reassignOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Select a category"
+          class="w-full"
+        />
+      </div>
       <template #footer>
         <Button label="Cancel" text @click="showDeleteConfirm = false" />
-        <Button label="Delete" icon="pi pi-trash" severity="danger" @click="executeDelete" />
+        <Button label="Delete" icon="pi pi-trash" severity="danger" :disabled="!reassignTo" @click="executeDelete" />
       </template>
     </Dialog>
   </section>

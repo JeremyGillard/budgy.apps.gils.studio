@@ -41,8 +41,12 @@ pub fn update_category(
 }
 
 #[tauri::command]
-pub fn delete_category(db: State<DbConn>, id: i32) -> Result<(), BudgyError> {
+pub fn delete_category(
+    db: State<DbConn>,
+    id: i32,
+    reassign_to: i32,
+) -> Result<(), BudgyError> {
     let mut guard = db.0.lock().map_err(|e| BudgyError::General(e.to_string()))?;
     let conn = guard.as_mut().ok_or(BudgyError::DatabaseLocked)?;
-    category_service::delete(conn, id)
+    category_service::delete(conn, id, reassign_to)
 }
