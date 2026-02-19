@@ -40,6 +40,15 @@ const emit = defineEmits(["navigate"]);
         <i class="pi pi-tags"></i>
         <span>Categorize</span>
       </a>
+      <a
+        class="nav-item"
+        :class="{ active: currentPage === 'categories' }"
+        href="#"
+        @click.prevent="emit('navigate', 'categories')"
+      >
+        <i class="pi pi-bookmark"></i>
+        <span>Categories</span>
+      </a>
     </nav>
   </aside>
 </template>

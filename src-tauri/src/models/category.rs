@@ -22,6 +22,23 @@ pub struct NewCategory<'a> {
     pub color: Option<&'a str>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct CreateCategoryInput {
+    pub name: String,
+    pub parent_id: Option<i32>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+}
+
+#[derive(AsChangeset, Debug, Deserialize)]
+#[diesel(table_name = categories)]
+pub struct UpdateCategory {
+    pub name: String,
+    pub parent_id: Option<i32>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
