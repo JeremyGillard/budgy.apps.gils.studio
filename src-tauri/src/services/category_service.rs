@@ -69,7 +69,11 @@ pub fn update(
         .map_err(BudgyError::from)
 }
 
-pub fn delete(conn: &mut SqliteConnection, id: i32) -> Result<(), BudgyError> {
+pub fn delete(
+    conn: &mut SqliteConnection,
+    id: i32,
+    reassign_to_id: i32,
+) -> Result<(), BudgyError> {
     let uncategorized = get_by_name(conn, "Uncategorized")?.ok_or_else(|| {
         BudgyError::General("Uncategorized category not found".to_string())
     })?;
@@ -80,9 +84,20 @@ pub fn delete(conn: &mut SqliteConnection, id: i32) -> Result<(), BudgyError> {
         ));
     }
 
-    // Reassign transactions to Uncategorized
+    if reassign_to_id == id {
+        return Err(BudgyError::General(
+            "Cannot reassign transactions to the category being deleted".to_string(),
+        ));
+    }
+
+    // Verify the target category exists
+    get_by_id(conn, reassign_to_id)?.ok_or_else(|| {
+        BudgyError::General("Target reassignment category does not exist".to_string())
+    })?;
+
+    // Reassign transactions to chosen category
     diesel::update(transactions::table.filter(transactions::category_id.eq(id)))
-        .set(transactions::category_id.eq(uncategorized.id))
+        .set(transactions::category_id.eq(reassign_to_id))
         .execute(conn)?;
 
     // Detach child categories
@@ -235,7 +250,7 @@ mod tests {
     fn test_delete_reassigns_transactions() {
         let conn = &mut establish_test_connection();
 
-        // Create a category to delete
+        // Create a category to delete and a target category
         let input = CreateCategoryInput {
             name: "ToDelete".to_string(),
             parent_id: None,
@@ -243,6 +258,14 @@ mod tests {
             color: None,
         };
         let cat = create(conn, &input).unwrap();
+
+        let target_input = CreateCategoryInput {
+            name: "ReassignTarget".to_string(),
+            parent_id: None,
+            icon: None,
+            color: None,
+        };
+        let target = create(conn, &target_input).unwrap();
 
         // Create a transaction assigned to this category (need account + type first)
         use crate::db::schema::{accounts, transaction_types};
@@ -286,16 +309,14 @@ mod tests {
             .execute(conn)
             .unwrap();
 
-        let uncategorized = get_by_name(conn, "Uncategorized").unwrap().unwrap();
+        delete(conn, cat.id, target.id).unwrap();
 
-        delete(conn, cat.id).unwrap();
-
-        // Transaction should now point to Uncategorized
+        // Transaction should now point to the target category
         let tx: crate::models::transaction::Transaction = transactions::table
             .filter(transactions::import_hash.eq("delete_test_hash_001"))
             .first(conn)
             .unwrap();
-        assert_eq!(tx.category_id, Some(uncategorized.id));
+        assert_eq!(tx.category_id, Some(target.id));
 
         // Category should be gone
         assert!(get_by_id(conn, cat.id).unwrap().is_none());
@@ -305,7 +326,8 @@ mod tests {
     fn test_delete_uncategorized_rejected() {
         let conn = &mut establish_test_connection();
         let uncategorized = get_by_name(conn, "Uncategorized").unwrap().unwrap();
-        let result = delete(conn, uncategorized.id);
+        let income = get_by_name(conn, "Income").unwrap().unwrap();
+        let result = delete(conn, uncategorized.id, income.id);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("Cannot delete"));
     }
@@ -313,6 +335,8 @@ mod tests {
     #[test]
     fn test_delete_detaches_children() {
         let conn = &mut establish_test_connection();
+
+        let uncategorized = get_by_name(conn, "Uncategorized").unwrap().unwrap();
 
         let parent_input = CreateCategoryInput {
             name: "ParentToDelete".to_string(),
@@ -331,7 +355,7 @@ mod tests {
         let child = create(conn, &child_input).unwrap();
         assert_eq!(child.parent_id, Some(parent.id));
 
-        delete(conn, parent.id).unwrap();
+        delete(conn, parent.id, uncategorized.id).unwrap();
 
         let child_after = get_by_id(conn, child.id).unwrap().unwrap();
         assert_eq!(child_after.parent_id, None);
@@ -340,6 +364,8 @@ mod tests {
     #[test]
     fn test_delete_removes_rules() {
         let conn = &mut establish_test_connection();
+
+        let uncategorized = get_by_name(conn, "Uncategorized").unwrap().unwrap();
 
         let input = CreateCategoryInput {
             name: "RuleTarget".to_string(),
@@ -367,7 +393,7 @@ mod tests {
             .unwrap();
         assert_eq!(rule_count, 1);
 
-        delete(conn, cat.id).unwrap();
+        delete(conn, cat.id, uncategorized.id).unwrap();
 
         let rule_count_after: i64 = category_rules::table
             .filter(category_rules::category_id.eq(cat.id))
@@ -375,5 +401,45 @@ mod tests {
             .get_result(conn)
             .unwrap();
         assert_eq!(rule_count_after, 0);
+    }
+
+    #[test]
+    fn test_delete_rejects_self_reassignment() {
+        let conn = &mut establish_test_connection();
+
+        let input = CreateCategoryInput {
+            name: "SelfReassign".to_string(),
+            parent_id: None,
+            icon: None,
+            color: None,
+        };
+        let cat = create(conn, &input).unwrap();
+
+        let result = delete(conn, cat.id, cat.id);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Cannot reassign transactions to the category being deleted"));
+    }
+
+    #[test]
+    fn test_delete_rejects_invalid_reassignment() {
+        let conn = &mut establish_test_connection();
+
+        let input = CreateCategoryInput {
+            name: "InvalidTarget".to_string(),
+            parent_id: None,
+            icon: None,
+            color: None,
+        };
+        let cat = create(conn, &input).unwrap();
+
+        let result = delete(conn, cat.id, 99999);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Target reassignment category does not exist"));
     }
 }
