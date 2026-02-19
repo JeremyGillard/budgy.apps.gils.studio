@@ -1,5 +1,5 @@
 use diesel::prelude::*;
-use diesel::sql_types::{Integer, Text};
+use diesel::sql_types::{Integer, Nullable, Text};
 use serde::Serialize;
 
 use crate::db::schema::transactions;
@@ -18,6 +18,44 @@ pub struct CategorySuggestion {
 pub struct CategorizationStats {
     pub total: i64,
     pub uncategorized: i64,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct TransactionWithCounterparty {
+    #[diesel(sql_type = Integer)]
+    pub id: i32,
+    #[diesel(sql_type = Integer)]
+    pub account_id: i32,
+    #[diesel(sql_type = Nullable<Integer>)]
+    pub counterparty_id: Option<i32>,
+    #[diesel(sql_type = Nullable<Integer>)]
+    pub category_id: Option<i32>,
+    #[diesel(sql_type = Integer)]
+    pub transaction_type_id: i32,
+    #[diesel(sql_type = Text)]
+    pub accounting_date: String,
+    #[diesel(sql_type = Text)]
+    pub value_date: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub statement_number: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub transaction_number: Option<String>,
+    #[diesel(sql_type = Integer)]
+    pub amount_cents: i32,
+    #[diesel(sql_type = Text)]
+    pub currency: String,
+    #[diesel(sql_type = Text)]
+    pub description: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub communication: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub import_hash: String,
+    #[diesel(sql_type = Text)]
+    pub created_at: String,
+    #[diesel(sql_type = Text)]
+    pub updated_at: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub counterparty_name: Option<String>,
 }
 
 pub fn insert(
@@ -42,29 +80,47 @@ pub fn list_by_month(
     conn: &mut SqliteConnection,
     year: i32,
     month: u32,
-) -> Result<Vec<Transaction>, BudgyError> {
+) -> Result<Vec<TransactionWithCounterparty>, BudgyError> {
     let start = format!("{:04}-{:02}-01", year, month);
     let end = format!("{:04}-{:02}-31", year, month);
 
-    transactions::table
-        .filter(transactions::accounting_date.ge(&start))
-        .filter(transactions::accounting_date.le(&end))
-        .order(transactions::accounting_date.desc())
-        .select(Transaction::as_select())
-        .load(conn)
-        .map_err(BudgyError::from)
+    diesel::sql_query(
+        "SELECT t.id, t.account_id, t.counterparty_id, t.category_id, \
+         t.transaction_type_id, t.accounting_date, t.value_date, \
+         t.statement_number, t.transaction_number, t.amount_cents, \
+         t.currency, t.description, t.communication, t.import_hash, \
+         t.created_at, t.updated_at, \
+         cp.name AS counterparty_name \
+         FROM transactions t \
+         LEFT JOIN counterparties cp ON t.counterparty_id = cp.id \
+         WHERE t.accounting_date >= ?1 AND t.accounting_date <= ?2 \
+         ORDER BY t.accounting_date DESC",
+    )
+    .bind::<Text, _>(&start)
+    .bind::<Text, _>(&end)
+    .load::<TransactionWithCounterparty>(conn)
+    .map_err(BudgyError::from)
 }
 
 pub fn list_by_account(
     conn: &mut SqliteConnection,
     account_id: i32,
-) -> Result<Vec<Transaction>, BudgyError> {
-    transactions::table
-        .filter(transactions::account_id.eq(account_id))
-        .order(transactions::accounting_date.desc())
-        .select(Transaction::as_select())
-        .load(conn)
-        .map_err(BudgyError::from)
+) -> Result<Vec<TransactionWithCounterparty>, BudgyError> {
+    diesel::sql_query(
+        "SELECT t.id, t.account_id, t.counterparty_id, t.category_id, \
+         t.transaction_type_id, t.accounting_date, t.value_date, \
+         t.statement_number, t.transaction_number, t.amount_cents, \
+         t.currency, t.description, t.communication, t.import_hash, \
+         t.created_at, t.updated_at, \
+         cp.name AS counterparty_name \
+         FROM transactions t \
+         LEFT JOIN counterparties cp ON t.counterparty_id = cp.id \
+         WHERE t.account_id = ?1 \
+         ORDER BY t.accounting_date DESC",
+    )
+    .bind::<Integer, _>(account_id)
+    .load::<TransactionWithCounterparty>(conn)
+    .map_err(BudgyError::from)
 }
 
 pub fn categorize(
@@ -246,6 +302,71 @@ mod tests {
 
         let nov = list_by_month(conn, 2024, 11).unwrap();
         assert_eq!(nov.len(), 1);
+    }
+
+    #[test]
+    fn test_list_by_month_includes_counterparty_name() {
+        let conn = &mut establish_test_connection();
+        let (account_id, type_id) = setup(conn);
+
+        let cp = counterparty_service::find_or_create(
+            conn,
+            Some("BE00 1234 5678 9012"),
+            "Colruyt",
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+
+        // Transaction WITH counterparty
+        let with_cp = NewTransaction {
+            account_id,
+            counterparty_id: Some(cp.id),
+            category_id: None,
+            transaction_type_id: type_id,
+            accounting_date: "2024-12-15",
+            value_date: "2024-12-15",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -3000,
+            currency: "EUR",
+            description: "COLRUYT",
+            communication: None,
+            import_hash: "cp_name_with",
+        };
+        insert(conn, &with_cp).unwrap();
+
+        // Transaction WITHOUT counterparty
+        let without_cp = NewTransaction {
+            account_id,
+            counterparty_id: None,
+            category_id: None,
+            transaction_type_id: type_id,
+            accounting_date: "2024-12-16",
+            value_date: "2024-12-16",
+            statement_number: None,
+            transaction_number: None,
+            amount_cents: -1000,
+            currency: "EUR",
+            description: "ATM",
+            communication: None,
+            import_hash: "cp_name_without",
+        };
+        insert(conn, &without_cp).unwrap();
+
+        let results = list_by_month(conn, 2024, 12).unwrap();
+        assert_eq!(results.len(), 2);
+
+        // Results are ordered by date DESC, so "2024-12-16" comes first
+        let atm = &results[0];
+        assert_eq!(atm.description, "ATM");
+        assert_eq!(atm.counterparty_name, None);
+
+        let colruyt = &results[1];
+        assert_eq!(colruyt.description, "COLRUYT");
+        assert_eq!(colruyt.counterparty_name, Some("Colruyt".to_string()));
     }
 
     #[test]

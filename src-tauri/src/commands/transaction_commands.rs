@@ -2,16 +2,17 @@ use tauri::State;
 
 use crate::commands::import_commands::DbConn;
 use crate::error::BudgyError;
-use crate::models::transaction::Transaction;
 use crate::services::transaction_service;
-use crate::services::transaction_service::{CategorizationStats, CategorySuggestion};
+use crate::services::transaction_service::{
+    CategorizationStats, CategorySuggestion, TransactionWithCounterparty,
+};
 
 #[tauri::command]
 pub fn list_transactions_by_month(
     db: State<DbConn>,
     year: i32,
     month: u32,
-) -> Result<Vec<Transaction>, BudgyError> {
+) -> Result<Vec<TransactionWithCounterparty>, BudgyError> {
     let mut guard = db.0.lock().map_err(|e| BudgyError::General(e.to_string()))?;
     let conn = guard.as_mut().ok_or(BudgyError::DatabaseLocked)?;
     transaction_service::list_by_month(conn, year, month)
@@ -21,7 +22,7 @@ pub fn list_transactions_by_month(
 pub fn list_transactions_by_account(
     db: State<DbConn>,
     account_id: i32,
-) -> Result<Vec<Transaction>, BudgyError> {
+) -> Result<Vec<TransactionWithCounterparty>, BudgyError> {
     let mut guard = db.0.lock().map_err(|e| BudgyError::General(e.to_string()))?;
     let conn = guard.as_mut().ok_or(BudgyError::DatabaseLocked)?;
     transaction_service::list_by_account(conn, account_id)
