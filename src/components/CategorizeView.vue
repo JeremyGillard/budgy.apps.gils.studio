@@ -34,6 +34,7 @@ const selectedDate = computed({
 const transactions = ref([]);
 const categories = ref([]);
 const searchQuery = ref("");
+const showSuggestionsOnly = ref(false);
 const searchInputRef = ref(null);
 const selectedRows = ref([]);
 const bulkCategoryId = ref(null);
@@ -58,6 +59,9 @@ const sortedTransactions = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
   if (q) {
     txs = txs.filter((t) => t.description?.toLowerCase().includes(q));
+  }
+  if (showSuggestionsOnly.value) {
+    txs = txs.filter((t) => suggestions.value[t.id] != null);
   }
   txs.sort((a, b) => {
     // Uncategorized first
@@ -227,6 +231,13 @@ watch(
         <InputIcon class="pi pi-search" @click="focusSearch" style="cursor: pointer" />
         <InputText ref="searchInputRef" v-model="searchQuery" placeholder="Search by description..." />
       </IconField>
+      <Button
+        label="Suggestions only"
+        :severity="showSuggestionsOnly ? 'success' : 'secondary'"
+        :outlined="!showSuggestionsOnly"
+        size="small"
+        @click="showSuggestionsOnly = !showSuggestionsOnly"
+      />
     </div>
 
     <div v-if="selectedRows.length" class="bulk-toolbar">
@@ -272,14 +283,13 @@ watch(
         </template>
       </Column>
       <Column field="accounting_date" header="Date" style="width: 9%" />
-      <Column field="description" header="Description" style="width: 28%">
+      <Column field="description" header="Description" style="width: 43%">
         <template #body="{ data }">
           <span class="description-cell" :title="data.description">
             {{ data.description }}
           </span>
         </template>
       </Column>
-      <Column field="counterparty_name" header="Counterparty" style="width: 15%" />
       <Column header="Category" style="width: 20%">
         <template #body="{ data }">
           <div class="category-cell">
