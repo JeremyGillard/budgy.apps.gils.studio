@@ -86,5 +86,12 @@ Accounts and counterparties use `find_or_create(conn, ...)` to deduplicate witho
 | `src-tauri/migrations/0007_seed_categories_and_types/` | Seeds 18 transaction types + 11 categories |
 | `src/main.js` | All frontend logic (vanilla JS) |
 
+### Completion workflow
+When finishing work on a task:
+1. Create a new branch from the current branch (e.g. `feat/short-description`)
+2. Commit all changes with a conventional commit message
+3. Push the branch and create a PR with the plan used as the PR description
+4. Send a Slack notification (see below)
+
 ### Slack notifications
 After completing a task, send a short Slack notification via the webhook in `.env` (`SLACK_HOOK`). The message should be prefixed with ✅ and be a very short title describing the task without the conventional commit type prefix (e.g. "✅ add category CRUD" not "feat: add category CRUD"). Use `curl` with the webhook URL.
