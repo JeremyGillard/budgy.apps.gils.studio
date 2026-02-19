@@ -85,3 +85,6 @@ Accounts and counterparties use `find_or_create(conn, ...)` to deduplicate witho
 | `src-tauri/src/db/schema.rs` | Diesel auto-generated schema |
 | `src-tauri/migrations/0007_seed_categories_and_types/` | Seeds 18 transaction types + 11 categories |
 | `src/main.js` | All frontend logic (vanilla JS) |
+
+### Slack notifications
+After completing a task, send a short Slack notification via the webhook in `.env` (`SLACK_HOOK`). The message should be prefixed with ✅ and be a very short title describing the task without the conventional commit type prefix (e.g. "✅ add category CRUD" not "feat: add category CRUD"). Use `curl` with the webhook URL.
