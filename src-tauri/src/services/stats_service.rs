@@ -140,6 +140,134 @@ pub fn daily_summary(
         .collect())
 }
 
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct YearlyCategoryTotal {
+    #[diesel(sql_type = Nullable<Text>)]
+    pub category_name: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub category_color: Option<String>,
+    #[diesel(sql_type = Integer)]
+    pub total_cents: i32,
+    #[diesel(sql_type = Integer)]
+    pub count: i32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct YearlyTopCategories {
+    pub year: i32,
+    pub total_cents: i64,
+    pub categories: Vec<YearlyCategoryTotal>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct AvgMonthlyCategorySpend {
+    #[diesel(sql_type = Nullable<Text>)]
+    pub category_name: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub category_color: Option<String>,
+    #[diesel(sql_type = Integer)]
+    pub avg_cents_per_month: i32,
+    #[diesel(sql_type = Integer)]
+    pub total_cents: i32,
+}
+
+pub fn yearly_earnings_by_category(
+    conn: &mut SqliteConnection,
+    year: i32,
+) -> Result<YearlyTopCategories, BudgyError> {
+    let start = format!("{:04}-01-01", year);
+    let end = format!("{:04}-12-31", year);
+
+    let total: i64 = transactions::table
+        .filter(transactions::accounting_date.ge(&start))
+        .filter(transactions::accounting_date.le(&end))
+        .filter(transactions::amount_cents.gt(0))
+        .select(diesel::dsl::sum(transactions::amount_cents))
+        .first::<Option<i64>>(conn)?
+        .unwrap_or(0);
+
+    let categories = diesel::sql_query(
+        "SELECT c.name AS category_name, c.color AS category_color, \
+         CAST(SUM(t.amount_cents) AS INTEGER) AS total_cents, \
+         CAST(COUNT(*) AS INTEGER) AS count \
+         FROM transactions t \
+         LEFT JOIN categories c ON t.category_id = c.id \
+         WHERE t.accounting_date >= ? AND t.accounting_date <= ? \
+         AND t.amount_cents > 0 \
+         GROUP BY t.category_id \
+         ORDER BY total_cents DESC \
+         LIMIT 10",
+    )
+    .bind::<Text, _>(&start)
+    .bind::<Text, _>(&end)
+    .load::<YearlyCategoryTotal>(conn)?;
+
+    Ok(YearlyTopCategories {
+        year,
+        total_cents: total,
+        categories,
+    })
+}
+
+pub fn yearly_expenses_by_category(
+    conn: &mut SqliteConnection,
+    year: i32,
+) -> Result<YearlyTopCategories, BudgyError> {
+    let start = format!("{:04}-01-01", year);
+    let end = format!("{:04}-12-31", year);
+
+    let total: i64 = transactions::table
+        .filter(transactions::accounting_date.ge(&start))
+        .filter(transactions::accounting_date.le(&end))
+        .filter(transactions::amount_cents.lt(0))
+        .select(diesel::dsl::sum(transactions::amount_cents))
+        .first::<Option<i64>>(conn)?
+        .unwrap_or(0);
+
+    let categories = diesel::sql_query(
+        "SELECT c.name AS category_name, c.color AS category_color, \
+         CAST(SUM(t.amount_cents) AS INTEGER) AS total_cents, \
+         CAST(COUNT(*) AS INTEGER) AS count \
+         FROM transactions t \
+         LEFT JOIN categories c ON t.category_id = c.id \
+         WHERE t.accounting_date >= ? AND t.accounting_date <= ? \
+         AND t.amount_cents < 0 \
+         GROUP BY t.category_id \
+         ORDER BY total_cents ASC \
+         LIMIT 10",
+    )
+    .bind::<Text, _>(&start)
+    .bind::<Text, _>(&end)
+    .load::<YearlyCategoryTotal>(conn)?;
+
+    Ok(YearlyTopCategories {
+        year,
+        total_cents: total,
+        categories,
+    })
+}
+
+pub fn avg_monthly_category_spend(
+    conn: &mut SqliteConnection,
+) -> Result<Vec<AvgMonthlyCategorySpend>, BudgyError> {
+    let results = diesel::sql_query(
+        "SELECT c.name AS category_name, c.color AS category_color, \
+         CAST(SUM(t.amount_cents) / NULLIF( \
+           (SELECT COUNT(DISTINCT strftime('%Y-%m', t2.accounting_date)) \
+            FROM transactions t2 WHERE t2.amount_cents < 0), 0) \
+         AS INTEGER) AS avg_cents_per_month, \
+         CAST(SUM(t.amount_cents) AS INTEGER) AS total_cents \
+         FROM transactions t \
+         LEFT JOIN categories c ON t.category_id = c.id \
+         WHERE t.amount_cents < 0 \
+         GROUP BY t.category_id \
+         ORDER BY avg_cents_per_month ASC",
+    )
+    .load::<AvgMonthlyCategorySpend>(conn)?;
+
+    Ok(results)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -220,5 +348,75 @@ mod tests {
             months.iter().any(|m| m.year == 2024 && m.month == 12),
             "Should contain December 2024"
         );
+    }
+
+    #[test]
+    fn test_yearly_earnings_by_category() {
+        let conn = &mut establish_test_connection();
+        import_service::import_csv(conn, "test.csv", &sample_csv()).unwrap();
+
+        let result = yearly_earnings_by_category(conn, 2024).unwrap();
+        assert!(result.total_cents >= 0, "Earnings total should be >= 0");
+        assert!(
+            result.categories.len() <= 10,
+            "Should have at most 10 categories"
+        );
+        for cat in &result.categories {
+            assert!(cat.total_cents > 0, "Each earning category should be positive");
+        }
+    }
+
+    #[test]
+    fn test_yearly_earnings_empty_year() {
+        let conn = &mut establish_test_connection();
+        let result = yearly_earnings_by_category(conn, 1990).unwrap();
+        assert_eq!(result.total_cents, 0);
+        assert!(result.categories.is_empty());
+    }
+
+    #[test]
+    fn test_yearly_expenses_by_category() {
+        let conn = &mut establish_test_connection();
+        import_service::import_csv(conn, "test.csv", &sample_csv()).unwrap();
+
+        let result = yearly_expenses_by_category(conn, 2024).unwrap();
+        assert!(result.total_cents <= 0, "Expenses total should be <= 0");
+        assert!(
+            result.categories.len() <= 10,
+            "Should have at most 10 categories"
+        );
+        for cat in &result.categories {
+            assert!(cat.total_cents < 0, "Each expense category should be negative");
+        }
+    }
+
+    #[test]
+    fn test_yearly_expenses_empty_year() {
+        let conn = &mut establish_test_connection();
+        let result = yearly_expenses_by_category(conn, 1990).unwrap();
+        assert_eq!(result.total_cents, 0);
+        assert!(result.categories.is_empty());
+    }
+
+    #[test]
+    fn test_avg_monthly_category_spend() {
+        let conn = &mut establish_test_connection();
+        import_service::import_csv(conn, "test.csv", &sample_csv()).unwrap();
+
+        let result = avg_monthly_category_spend(conn).unwrap();
+        assert!(!result.is_empty(), "Should have expense categories");
+        for cat in &result {
+            assert!(
+                cat.avg_cents_per_month <= 0,
+                "Average spend should be <= 0 (expenses)"
+            );
+        }
+    }
+
+    #[test]
+    fn test_avg_monthly_category_spend_no_data() {
+        let conn = &mut establish_test_connection();
+        let result = avg_monthly_category_spend(conn).unwrap();
+        assert!(result.is_empty());
     }
 }

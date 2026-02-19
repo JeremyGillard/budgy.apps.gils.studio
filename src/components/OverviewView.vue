@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import CategorySpendChart from "./CategorySpendChart.vue";
+import YearlyTotals from "./YearlyTotals.vue";
+import MonthlyBalanceChart from "./MonthlyBalanceChart.vue";
 
 const emit = defineEmits(["navigate"]);
 
@@ -42,6 +45,17 @@ const maxAbsBalance = computed(() => {
     max = Math.max(max, Math.abs(s.net_cents));
   }
   return max;
+});
+
+const lastFullYear = computed(() => {
+  if (importedMonths.value.length === 0) return null;
+  const ys = [...new Set(importedMonths.value.map((m) => m.year))];
+  const maxYear = Math.max(...ys);
+  const currentYear = new Date().getFullYear();
+  if (maxYear >= currentYear && ys.includes(maxYear - 1)) {
+    return maxYear - 1;
+  }
+  return maxYear;
 });
 
 function hasData(year, month) {
@@ -96,38 +110,48 @@ onMounted(loadMonths);
 
 <template>
   <section>
-    <h2>Overview</h2>
+    <h2 class="page-title">Overview</h2>
     <p v-if="years.length === 0" class="empty-msg">
       No data imported yet. Import a CSV file to get started.
     </p>
-    <div v-else class="overview-grid">
-      <div class="grid-header">
-        <div class="year-label"></div>
-        <div v-for="label in MONTH_LABELS" :key="label" class="month-header">
-          {{ label }}
+    <template v-else>
+      <YearlyTotals v-if="lastFullYear" :year="lastFullYear" :refresh-key="props.refreshKey" />
+      <MonthlyBalanceChart v-if="lastFullYear" :summaries="summaries" :year="lastFullYear" />
+      <CategorySpendChart :refresh-key="props.refreshKey" />
+      <h2>All months</h2>
+      <div class="overview-grid">
+        <div class="grid-header">
+          <div class="year-label"></div>
+          <div v-for="label in MONTH_LABELS" :key="label" class="month-header">
+            {{ label }}
+          </div>
+        </div>
+        <div v-for="year in years" :key="year" class="grid-row">
+          <div class="year-label">{{ year }}</div>
+          <div
+            v-for="month in 12"
+            :key="month"
+            class="month-cell"
+            :class="{ imported: hasData(year, month), empty: !hasData(year, month) }"
+            :style="hasData(year, month) ? cellStyle(year, month) : {}"
+            @click="onCellClick(year, month)"
+          >
+            {{ month }}
+          </div>
         </div>
       </div>
-      <div v-for="year in years" :key="year" class="grid-row">
-        <div class="year-label">{{ year }}</div>
-        <div
-          v-for="month in 12"
-          :key="month"
-          class="month-cell"
-          :class="{ imported: hasData(year, month), empty: !hasData(year, month) }"
-          :style="hasData(year, month) ? cellStyle(year, month) : {}"
-          @click="onCellClick(year, month)"
-        >
-          {{ month }}
-        </div>
-      </div>
-    </div>
+    </template>
   </section>
 </template>
 
 <style scoped>
 h2 {
   font-size: 1.1rem;
-  margin: 0 0 0.75rem 0;
+  margin: 1.5rem 0 0.75rem 0;
+}
+
+.page-title {
+  margin-top: 0;
 }
 
 .empty-msg {
