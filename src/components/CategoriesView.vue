@@ -10,6 +10,7 @@ import ColorPicker from "primevue/colorpicker";
 import Select from "primevue/select";
 import { useToast } from "primevue/usetoast";
 
+const emit = defineEmits(["categories-changed"]);
 const toast = useToast();
 
 const categories = ref([]);
@@ -85,6 +86,7 @@ async function saveCategory() {
     }
     showDialog.value = false;
     await loadCategories();
+    emit("categories-changed");
   } catch (e) {
     toast.add({ severity: "error", summary: "Save failed", detail: String(e), life: 5000 });
   }
@@ -102,6 +104,7 @@ async function executeDelete() {
     showDeleteConfirm.value = false;
     deletingCategory.value = null;
     await loadCategories();
+    emit("categories-changed");
   } catch (e) {
     toast.add({ severity: "error", summary: "Delete failed", detail: String(e), life: 5000 });
   }
