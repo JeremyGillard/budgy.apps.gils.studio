@@ -1,6 +1,2 @@
 .samples
-node_modules
-dist
-src-tauri/target
-*.db
 .env
