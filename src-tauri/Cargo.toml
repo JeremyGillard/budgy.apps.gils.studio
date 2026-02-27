@@ -1,0 +1,24 @@
+[package]
+name = "budgy"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "budgy_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+diesel = { version = "2", features = ["sqlite"] }
+diesel_migrations = "2"
+libsqlite3-sys = { version = "0.30", features = ["bundled"] }
+serde = { version = "=1.0.217", features = ["derive"] }
+serde_json = "=1.0.137"
+sha2 = "0.10"
+chrono = "0.4"
+encoding_rs = "0.8"
+libc = "=0.2.170"
