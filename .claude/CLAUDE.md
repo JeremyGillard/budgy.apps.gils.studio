@@ -55,3 +55,9 @@ When asked to create a new feature, orchestrate work across three specialized ag
 
 - Push the feature branch to the remote.
 - Create a pull request targeting `main`.
+
+## Git Merge Strategy
+
+- Always use **rebase** to integrate feature branches into `main`. Never use merge commits.
+- After a PR is approved, rebase the feature branch onto `main` and fast-forward merge to keep a linear history.
+- Never create "Merge branch" commits.
