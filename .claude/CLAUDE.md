@@ -55,6 +55,7 @@ When asked to create a new feature, orchestrate work across three specialized ag
 
 - Push the feature branch to the remote.
 - Create a pull request targeting `main`.
+- After the PR is created, notify the user by running `afplay /System/Library/Sounds/Blow.aiff` (macOS only).
 
 ## Git Merge Strategy
 
